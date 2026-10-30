@@ -1,0 +1,7 @@
+# 统一换行符，避免 Windows 提交、Linux 部署时互相报「整个文件都改了」
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
+*.ico binary
