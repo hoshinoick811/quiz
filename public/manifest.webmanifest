@@ -1,0 +1,19 @@
+{
+  "name": "运维题库",
+  "short_name": "运维题库",
+  "description": "运维面试题库 · 每天十分钟，先说再看的自测工具",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f5f9",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

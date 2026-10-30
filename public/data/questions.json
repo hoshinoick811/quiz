@@ -1,0 +1,433 @@
+{
+  "version": 1,
+  "generated": "2026-10-29",
+  "chapters": [
+    { "id": 1, "title": "Linux 基础篇", "short": "Linux 基础" }
+  ],
+  "items": [
+    {
+      "id": "c01-q01", "ch": 1, "kind": "concept", "level": 3, "src": "edited",
+      "tag": ["启动", "systemd"],
+      "q": "描述 Linux 系统的启动过程",
+      "a": [
+        "服务器加电 → BIOS 自检，检查硬件信息",
+        "按 BIOS 启动项启动（硬盘 / 光盘 / U 盘 / 网络），默认硬盘",
+        "读 MBR：512 字节 = 446 字节引导程序 + 64 字节分区表 + 2 字节魔数（55AA）",
+        "读 grub.cfg，把内核 vmlinuz 和 initramfs 加载进内存",
+        "内核启动 PID 1（systemd），并加载 /etc/fstab 挂载文件系统",
+        "从 initramfs 切换到磁盘真实根目录（switch_root）",
+        "读 /etc/systemd/system/default.target 确定运行级别",
+        "systemd 启动 multi-user.target 下的服务，并执行 /etc/rc.d/rc.local",
+        "启动 getty.target 与登录服务；需要图形界面再启动 graphical.target"
+      ],
+      "follow": ["UEFI 机器上第 3 步有什么不同？", "grub 和 grub2 的区别是什么？"]
+    },
+    {
+      "id": "c01-q02", "ch": 1, "kind": "concept", "level": 2, "src": "edited",
+      "tag": ["文件系统", "inode"],
+      "q": "描述 Linux 下软硬链接的区别",
+      "a": [
+        "硬链接与源文件 inode 相同；软链接是独立文件，inode 不同",
+        "硬链接不能指向目录；软链接可以，且常用来做版本切换",
+        "删源文件：硬链接照常可用；软链接变成断链（ls 显示闪烁红字）",
+        "硬链接不能跨文件系统；软链接可以",
+        "硬链接权限与源文件一致；软链接权限显示 777，实际由目标文件决定"
+      ],
+      "follow": ["删掉源文件后，磁盘空间什么时候才真正释放？"]
+    },
+    {
+      "id": "c01-q03", "ch": 1, "kind": "code", "level": 2, "src": "edited", "verify": true,
+      "tag": ["进程", "nice"],
+      "q": "如何查看和修改 Linux 进程优先级",
+      "a": [
+        "查看：top 看 PR / NI 两列，或 ps -exo pid,pri,nice,command",
+        "renice <nice值> -p <PID> 修改正在运行的进程",
+        "top 里按 r，再输入 PID 和 nice 值",
+        "nice -n <nice值> <命令> 在启动时指定",
+        "nice 范围 -20 ~ 19，值越小优先级越高；子进程默认继承父进程 nice"
+      ],
+      "follow": ["普通用户能把 nice 调成负数吗？为什么？"]
+    },
+    {
+      "id": "c01-q04", "ch": 1, "kind": "code", "level": 2, "src": "edited", "verify": true,
+      "tag": ["挂载", "存储"],
+      "q": "如何将 CentOS.ISO 文件挂载到 /mnt/cdrom",
+      "a": [
+        "mkdir -p /mnt/cdrom",
+        "mount -o ro /xxx/CentOS.iso /mnt/cdrom",
+        "开机自动挂载：写 /etc/fstab，或用 systemd 的 .mount 单元",
+        "老写法 echo ... >> /etc/rc.local 在 CentOS 7+ 需要 chmod +x /etc/rc.d/rc.local",
+        "卸载：umount /mnt/cdrom"
+      ],
+      "follow": ["挂载 ISO 和挂载一个磁盘分区，命令有什么区别？"]
+    },
+    {
+      "id": "c01-q05", "ch": 1, "kind": "code", "level": 2, "src": "edited", "verify": true,
+      "tag": ["find", "查找"],
+      "q": "查找 /opt/tomcat/ 目录下文件名含 JDBC 的 jsp 文件",
+      "a": [
+        "find /opt/tomcat -type f -name '*JDBC*.jsp'",
+        "按文件名匹配用 -name；按文件内容匹配用 grep -rl JDBC /opt/tomcat --include='*.jsp'",
+        "-type f 只找普通文件，排除目录",
+        "注意：文档原文写成 *.jpg 是笔误，题目问的是 jsp"
+      ],
+      "follow": ["要让 find 不跨文件系统，加什么参数？"]
+    },
+    {
+      "id": "c01-q06", "ch": 1, "kind": "concept", "level": 1, "src": "edited",
+      "tag": ["运行级别"],
+      "q": "如何查看 Linux 服务器运行级别",
+      "a": [
+        "runlevel（sysvinit 老系统）",
+        "systemctl get-default（RHEL / CentOS 7+）",
+        "级别含义：0 关机、1 单用户、3 多用户命令行、5 图形界面、6 重启"
+      ],
+      "follow": ["怎么把系统默认启动到命令行而不是图形界面？"]
+    },
+    {
+      "id": "c01-q07", "ch": 1, "kind": "code", "level": 1, "src": "edited", "verify": true,
+      "tag": ["版本"],
+      "q": "如何查看 Linux 服务器系统和内核版本",
+      "a": [
+        "系统版本：lsb_release -d，或 cat /etc/redhat-release，或 cat /etc/os-release",
+        "内核版本：uname -r",
+        "一次看全：uname -a（内核 + 主机名 + 架构）"
+      ],
+      "follow": ["/etc/redhat-release 在 Ubuntu 上存在吗？"]
+    },
+    {
+      "id": "c01-q08", "ch": 1, "kind": "code", "level": 4, "src": "edited", "verify": true,
+      "tag": ["crontab", "计划任务"],
+      "q": "某管理员需每天做重复工作：①每天 16:50 删除 /abc 下全部子目录和文件；②早 8 点到晚 6 点每小时把 /xyz/x1 每行第一个域追加到 /backup/bak01.txt；③每周一 17:50 把 /data 打包成 backup.tar.gz。请写出 crontab",
+      "a": [
+        "50 16 * * *  rm -rf /abc/*",
+        "0 8-18 * * *  awk '{print $1}' /xyz/x1 >> /backup/bak01.txt",
+        "50 17 * * 1  tar -zcf /backup/backup.tar.gz /data",
+        "易错点：第二条的分钟位必须是 0，写成 * 就变成每分钟跑一次",
+        "考点是 crontab 五个时间位：分 时 日 月 周"
+      ],
+      "follow": ["为什么 crontab 里要用绝对路径？"]
+    },
+    {
+      "id": "c01-q09", "ch": 1, "kind": "code", "level": 3, "src": "edited", "verify": true,
+      "tag": ["inode", "find"],
+      "q": "如何查看一个文件夹 inode 节点数有多少",
+      "a": [
+        "find /目录 -xdev -printf '%h\\n' | sort | uniq -c | sort -k1 -n",
+        "思路：打印每个文件所在的目录 → 排序去重计数，近似该目录填充的 inode 数",
+        "-xdev 保证不跨文件系统",
+        "查整个文件系统的 inode 用量，用 df -ih 更直接"
+      ],
+      "follow": ["inode 用满了但磁盘还有空间，会发生什么？"]
+    },
+    {
+      "id": "c01-q10", "ch": 1, "kind": "code", "level": 4, "src": "edited", "verify": true,
+      "tag": ["find", "清理"],
+      "q": "查找最后创建时间是 3 天前、后缀是 *.log 的文件并删除",
+      "a": [
+        "find /路径 -ctime +3 -name '*.log' -delete",
+        "等价写法：-exec rm -rf {} \\; 或 | xargs rm -f（文件名带空格要用 -print0 | xargs -0）",
+        "注意：-ctime 是 inode 状态变更时间（改权限也算），-mtime 才是内容修改时间",
+        "Linux 没有对外暴露「创建时间」字段，按日志几天没动来清理应该用 -mtime"
+      ],
+      "follow": ["-delete 和 -exec rm 哪个更安全？为什么？"]
+    },
+    {
+      "id": "c01-q11", "ch": 1, "kind": "concept", "level": 2, "src": "edited",
+      "tag": ["ls", "运维技巧"],
+      "q": "如果某文件夹下文件太多无法 ls，该如何解决",
+      "a": [
+        "ls -f：不排序，直接按目录顺序输出",
+        "ls -aU：-U 关闭排序，-a 包含隐藏文件",
+        "原因：ls 默认要排序，几十万文件时排序开销极大甚至卡死"
+      ],
+      "follow": ["rm -rf 删一个几十万文件的目录很慢，有什么办法加速？"]
+    },
+    {
+      "id": "c01-q12", "ch": 1, "kind": "code", "level": 3, "src": "edited", "verify": true,
+      "tag": ["tcpdump", "网络"],
+      "q": "如何用 tcpdump 嗅探 80 端口的访问，看看谁访问最多",
+      "a": [
+        "tcpdump -i eth0 -tnn dst port 80 | awk '{print $3}' | cut -d. -f1-4 | sort | uniq -c | sort -nr",
+        "参数：-i 指定网卡；-tnn 不打时间戳、地址端口全用数字；dst port 80 只抓发往 80 的包",
+        "更轻量的做法：ss -tan state established | awk '{print $5}' | cut -d: -f1 | sort | uniq -c | sort -nr",
+        "注意：不加 -c 会一直抓，要自己控制时长"
+      ],
+      "follow": ["抓包时如果发现大量重传，说明什么？"]
+    },
+    {
+      "id": "c01-q13", "ch": 1, "kind": "code", "level": 2, "src": "edited", "verify": true,
+      "tag": ["统计", "wc"],
+      "q": "如何查看 /var/log 目录下的文件数",
+      "a": [
+        "ls /var/log/ -1R | grep ^- | wc -l",
+        "更稳的写法：find /var/log -type f | wc -l",
+        "只统计当前层：ls -l /var/log | grep -c '^-'"
+      ],
+      "follow": ["ls -1R 里的 -1 是干什么的？"]
+    },
+    {
+      "id": "c01-q14", "ch": 1, "kind": "code", "level": 3, "src": "edited", "verify": true,
+      "tag": ["netstat", "ss", "连接"],
+      "q": "如何查看 Linux 系统每个 IP 的连接数",
+      "a": [
+        "netstat -n | awk '/^tcp/{print $5}' | awk -F: '{print $1}' | sort | uniq -c | sort -nr",
+        "更快的替代：ss -tan | awk 'NR>1{print $5}' | cut -d: -f1 | sort | uniq -c | sort -nr",
+        "思路：$5 是对端地址（IP:端口），按冒号切出 IP，再排序去重计数",
+        "连接数上万时 ss 比 netstat 快一个量级"
+      ],
+      "follow": ["怎么只看 ESTABLISHED 状态的连接？"]
+    },
+    {
+      "id": "c01-q15", "ch": 1, "kind": "code", "level": 2, "src": "edited", "verify": true,
+      "tag": ["随机", "shell"],
+      "q": "shell 下生成 32 位随机密码",
+      "a": [
+        "cat /dev/urandom | head -1 | md5sum | head -c 32",
+        "更可靠的写法：tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32（可控制字符集）",
+        "注意：/dev/random 会阻塞，生产脚本别用"
+      ],
+      "follow": ["/dev/urandom 和 /dev/random 的区别是什么？"]
+    },
+    {
+      "id": "c01-q16", "ch": 1, "kind": "code", "level": 3, "src": "edited", "verify": true,
+      "tag": ["awk", "日志统计"],
+      "q": "统计 apache 的 access.log 中访问量最多的 5 个 IP",
+      "a": [
+        "awk '{print $1}' access.log | sort | uniq -c | sort -nr | head -5",
+        "经典四段式：取第一列 → 排序 → 去重计数 → 倒序 → 取前 5",
+        "加条件（只统计 200）：awk '$9==200{print $1}' access.log | sort | uniq -c | sort -nr | head -5",
+        "统计 TOP5 URL：把 $1 换成 $7"
+      ],
+      "follow": ["如果要统计每秒的请求数（QPS 峰值），怎么改？"]
+    },
+    {
+      "id": "c01-q17", "ch": 1, "kind": "scenario", "level": 3, "src": "edited",
+      "tag": ["网络排障", "桌面"],
+      "q": "如果一台办公室内电脑无法上网（打不开网站），请给出排查步骤",
+      "a": [
+        "物理层：网线是否插好、网口灯是否亮、无线是否连上",
+        "本机配置：ip addr 看 IP 和掩码，ip route 看默认网关是否合理",
+        "ping 网关，不通则往上查交换机、路由器",
+        "网关通 → ping 8.8.8.8 验证外网连通",
+        "外网通但打不开网页 → 查 DNS 解析（nslookup baidu.com）",
+        "同一局域网其他主机正常时，换网线或换交换机插口再试"
+      ],
+      "follow": ["怎么快速证明「是 DNS 的问题」而不是网络不通？"]
+    },
+    {
+      "id": "c01-q18", "ch": 1, "kind": "concept", "level": 3, "src": "edited",
+      "tag": ["选型", "发行版"],
+      "q": "如何选择 Linux 操作系统版本",
+      "a": [
+        "老答案「服务器首选 CentOS」已经过时：CentOS 8 于 2021-12-31 停维，CentOS 7 于 2024-06-30 EOL",
+        "平滑迁移：Rocky Linux / AlmaLinux，RHEL 1:1 兼容、社区主导",
+        "新业务和云上：Ubuntu LTS",
+        "需要商业支持：RHEL / SUSE；安全性要求高：Debian / FreeBSD",
+        "回答时主动说明版本生命周期，比背发行版名字加分"
+      ],
+      "follow": ["Rocky 和 AlmaLinux 有什么区别？"]
+    },
+    {
+      "id": "c01-q19", "ch": 1, "kind": "scenario", "level": 4, "src": "edited",
+      "tag": ["磁盘", "inode", "排障"],
+      "q": "分析为什么一块磁盘空间足够却不能在上面创建文件",
+      "a": [
+        "先排除权限：当前用户对该目录是否有写权限、是否设了 quota、文件系统是否只读",
+        "df -ih 看 inode 使用率：100% 说明 inode 耗尽，即使还有空闲 block 也建不了文件",
+        "清理大量小文件（缓存、session、日志碎片）",
+        "判断是本地盘还是网络存储，网络设备还要排除网络原因"
+      ],
+      "follow": ["inode 数量在格式化时就定了，用完能扩容吗？"]
+    },
+    {
+      "id": "c01-q20", "ch": 1, "kind": "concept", "level": 2, "src": "edited",
+      "tag": ["包管理"],
+      "q": "简述 Linux 系统软件包安装方式及特点",
+      "a": [
+        "rpm 系：本地 rpm / rpmbuild，在线 yum / dnf",
+        "deb 系：本地 dpkg，在线 apt",
+        "源码包：./configure → make → make install，可定制但依赖要自己解决",
+        "二进制包：安装快、依赖自动解决，但版本受仓库限制、路径固定"
+      ],
+      "follow": ["yum 和 rpm 的关系是什么？"]
+    },
+    {
+      "id": "c01-q21", "ch": 1, "kind": "concept", "level": 2, "src": "edited",
+      "tag": ["权限"],
+      "q": "Linux 权限数字 644、755、700 代表什么，简述最小权限原则",
+      "a": [
+        "644：属主读写，属组和其他只读 —— 普通文件默认权限",
+        "755：属主读写执行，属组和其他读 + 执行 —— 程序 / 目录权限",
+        "700：仅属主读写执行 —— 密钥、配置文件",
+        "最小权限原则：用户 / 进程只分配完成工作所必须的权限",
+        "目录的 r 是能列目录、x 是能进入、w 是能增删文件，三者含义不同"
+      ],
+      "follow": ["一个目录权限是 644，用户能 cd 进去吗？"]
+    },
+    {
+      "id": "c01-q22", "ch": 1, "kind": "scenario", "level": 5, "src": "edited",
+      "tag": ["排障", "CPU"],
+      "q": "服务器 CPU 100%，请写出完整排查流程",
+      "a": [
+        "uptime 看负载，top 看 us/sy/id/wa，先定性瓶颈在哪",
+        "us 高 = 业务算力；sy 高 = 系统调用 / 大量小文件 IO；wa 高 = 磁盘瓶颈；si/hi 高 = 中断",
+        "top 按 P 排序定位 PID；按 shift+H 打开线程视图，定位具体线程",
+        "ps -T -p PID 看线程；perf top 看热点内核函数",
+        "结合业务日志判断：死循环、锁竞争，还是 IO 阻塞",
+        "临时止损：renice 调大 nice 值让出 CPU，必要时重启",
+        "根治：优化代码 / 调内核参数；事后记录时间点和指标，复盘根因"
+      ],
+      "follow": ["如果 wa 很高但 us 不高，你还会盯着 CPU 查吗？"]
+    },
+    {
+      "id": "c01-q23", "ch": 1, "kind": "scenario", "level": 5, "src": "edited",
+      "tag": ["排障", "内存", "OOM"],
+      "q": "服务器 OOM（内存溢出）发生了，如何排查",
+      "a": [
+        "dmesg -T | grep -i oom 确认 OOM Killer 杀了哪个进程",
+        "free -h、vmstat 看内存和 swap；看 /proc/meminfo",
+        "top / ps aux / pidstat 分析进程内存占用",
+        "区分三种原因：内存泄漏、流量突增、配置的内存上限过大",
+        "临时：重启业务、扩容内存；根治：修泄漏、调 JVM 参数、加缓存层",
+        "容器场景：Pod 超 memory limit 会 OOMKilled，看 kubectl describe pod 的 Last State"
+      ],
+      "follow": ["怎么判断是「真的泄漏」还是「只是峰值高」？"]
+    },
+    {
+      "id": "c01-q24", "ch": 1, "kind": "scenario", "level": 4, "src": "edited",
+      "tag": ["lsof", "磁盘"],
+      "q": "lsof 命令常见使用场景，删除文件后空间不释放如何处理",
+      "a": [
+        "lsof 用途：查看进程打开的文件和端口",
+        "lsof -i:端口 查端口占用；lsof -p PID 看进程打开的所有文件",
+        "lsof | grep deleted 查已删除但句柄未释放的文件",
+        "原因：rm 只删掉目录项，进程仍持有句柄，inode 和 block 不会回收",
+        "处理：> access.log 清空文件（生产推荐），或重启进程释放句柄",
+        "结论：不要直接 rm 正在写的大日志文件"
+      ],
+      "follow": ["为什么 > access.log 不会中断应用写入？"]
+    },
+    {
+      "id": "c01-q25", "ch": 1, "kind": "concept", "level": 2, "src": "edited",
+      "tag": ["proc", "内核"],
+      "q": "简述 /proc 文件系统作用，常用查看哪些信息",
+      "a": [
+        "/proc 是伪文件系统，不占用磁盘，由内核实时输出信息",
+        "/proc/cpuinfo 看 CPU，/proc/meminfo 看内存",
+        "/proc/net/tcp 是连接表；/proc/PID/ 下有 cmdline、status、fd",
+        "还有 /proc/loadavg、/proc/uptime；/proc/sys/ 是内核参数，sysctl 改的就是这里"
+      ],
+      "follow": ["怎么看某个进程占用了哪些文件描述符？"]
+    },
+    {
+      "id": "c01-q26", "ch": 1, "kind": "scenario", "level": 3, "src": "edited",
+      "tag": ["内存", "swap"],
+      "q": "什么是 swap 交换分区，生产环境 swap 调优策略",
+      "a": [
+        "swap 用磁盘空间充当虚拟内存，内存不足时把冷数据置换到磁盘",
+        "不要完全关闭 swap：内存突发时没有缓冲，会直接被 OOM Kill",
+        "vm.swappiness 业务服务器建议 10–30，减少不必要的换出",
+        "swap 持续高使用说明物理内存确实不足，优先扩容内存，而不是调参硬扛"
+      ],
+      "follow": ["数据库服务器为什么不建议用 swap？"]
+    },
+    {
+      "id": "c01-q27", "ch": 1, "kind": "concept", "level": 2, "src": "edited",
+      "tag": ["systemd"],
+      "q": "systemd 和传统 sysvinit 相比有哪些优势",
+      "a": [
+        "并行启动服务，开机速度明显更快（sysvinit 是串行）",
+        "支持服务依赖关系管理",
+        "统一用 unit 管理 service / socket / mount / timer",
+        "journalctl 统一日志；支持崩溃自动重启、cgroup 资源限制",
+        "CentOS 7+ 默认 systemd，统一用 systemctl 管理"
+      ],
+      "follow": ["怎么让一个服务开机自启？"]
+    },
+    {
+      "id": "c01-q28", "ch": 1, "kind": "code", "level": 3, "src": "edited", "verify": true,
+      "tag": ["journalctl", "日志"],
+      "q": "journalctl 常用命令，如何查看某个服务日志",
+      "a": [
+        "journalctl -u nginx 查看服务日志",
+        "journalctl -u nginx --since '2026-10-01 10:00:00' 指定时间，可加 --until",
+        "journalctl -f -u nginx 实时跟踪",
+        "journalctl --vacuum-size=200M 限制日志占用（注意是 --vacuum-size）",
+        "journalctl -p err -b 看本次开机以来的 error 级别日志"
+      ],
+      "follow": ["journal 日志默认存在哪个目录？怎么改成写文件？"]
+    },
+    {
+      "id": "c01-q29", "ch": 1, "kind": "concept", "level": 4, "src": "edited",
+      "tag": ["进程", "僵尸"],
+      "q": "Linux 中什么是孤儿进程、僵尸进程，如何处理僵尸进程",
+      "a": [
+        "僵尸进程：子进程已退出，父进程没有 wait/waitpid 回收，PCB 残留，状态为 Z",
+        "孤儿进程：父进程先退出，子进程被 init/systemd 收养，正常无害",
+        "处理僵尸：修复父进程代码正确回收，或重启父进程",
+        "不要直接 kill 僵尸 PID —— 它已经死了，kill 无效",
+        "僵尸不占 CPU，但占用 PID 和内核进程表项，数量大了无法 fork 新进程"
+      ],
+      "follow": ["僵尸进程会占用内存吗？"]
+    },
+    {
+      "id": "c01-q30", "ch": 1, "kind": "concept", "level": 3, "src": "edited",
+      "tag": ["dmesg", "排障"],
+      "q": "dmesg 命令的用途，哪些故障优先看 dmesg",
+      "a": [
+        "dmesg 输出内核环形缓冲区日志，记录内核和驱动的运行信息",
+        "优先看：硬件报错（磁盘坏道、网卡丢包）、OOM Killer、文件系统错误、内核崩溃",
+        "常用参数：-T 转可读时间、-w 实时跟踪、-l err,crit 只看错误级别",
+        "kernel.dmesg_restrict=1 时普通用户看不了，需要 root"
+      ],
+      "follow": ["ring buffer 满了会怎样？"]
+    },
+    {
+      "id": "c01-a01", "ch": 1, "kind": "acceptance", "level": 3, "src": "written",
+      "tag": ["验收", "磁盘"],
+      "q": "【验收一】一台服务器 df -h 显示还有 20% 空间，但应用持续报 No space left on device。请说出完整排查步骤，以及每一步的判断依据。",
+      "a": [
+        "第一步 df -h：确认到底哪个挂载点满、是不是应用的写入目录，先排除「看错了盘」",
+        "第二步 df -ih：看 inode 使用率，100% 就是 inode 耗尽（最常见的原因）",
+        "第三步 查配额与只读：quota、mount | grep ro，排除权限和只读挂载",
+        "第四步 查被删文件占句柄：lsof | grep deleted，找出还开着已删除文件的进程",
+        "第五步 网络存储：NFS 要查服务端配额和网络，本地 df 不可信",
+        "最后按原因给处置：清小文件 / 重建文件系统扩 inode / 重启持句柄进程"
+      ],
+      "follow": ["如果是容器里报这个错，还要多查什么？"]
+    },
+    {
+      "id": "c01-a02", "ch": 1, "kind": "acceptance", "level": 4, "src": "written",
+      "tag": ["验收", "综合排障"],
+      "q": "【验收二】业务反馈「接口变慢，机器像卡住了」。你只有 10 分钟定位，请按顺序说出你会执行的命令，以及每一步在看什么。",
+      "a": [
+        "uptime：负载是否超过 CPU 核数，先判断是整体过载还是局部问题",
+        "top：一屏看 CPU、内存、wa，先定性瓶颈在哪类资源",
+        "free -h：内存和 swap 是否吃紧，swap 是否被大量使用",
+        "df -h 和 df -ih：排除磁盘写满与 inode 耗尽",
+        "iostat -x 1：看 %util 和 await，确认是不是磁盘 IO 瓶颈",
+        "ss -s / ss -tan：看连接状态分布，TIME-WAIT、CLOSE-WAIT 是否异常",
+        "dmesg -T | tail -50：看有没有 OOM、硬件报错",
+        "最后必须落到结论：瓶颈资源 + 可疑进程 + 一个临时止损动作"
+      ],
+      "follow": ["如果所有指标都正常，但业务就是慢，下一步查什么？"]
+    },
+    {
+      "id": "c01-a03", "ch": 1, "kind": "acceptance", "level": 5, "src": "written",
+      "tag": ["验收", "巡检"],
+      "q": "【验收三】接手一台陌生服务器，30 分钟内要交一份能直接给主管的巡检报告。请说出你会采集哪些项、用什么命令、报告怎么组织。",
+      "a": [
+        "系统底座：uname -a、cat /etc/os-release、uptime",
+        "CPU / 内存：lscpu、free -h、vmstat 1 5",
+        "磁盘：df -h、df -ih、lsblk、iostat -x 1 3",
+        "网络：ip addr、ip route、ss -s、ss -tulnp",
+        "异常：dmesg -T | tail -50、journalctl -p err -b",
+        "进程 TOP：ps aux --sort=-%cpu | head、ps aux --sort=-%mem | head",
+        "报告结构：结论先行（健康 / 风险）→ 关键指标表 → 风险项与建议 → 附原始命令输出",
+        "加分项：说明哪些项是「现在正常但需要持续观察」的趋势指标"
+      ],
+      "follow": ["如果主管只给你三行字的空间，你会写哪三行？"]
+    }
+  ]
+}

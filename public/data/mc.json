@@ -1,0 +1,222 @@
+{
+  "version": 1,
+  "note": "选择题选项。answer 为正确项下标；渲染时会按题目 id 稳定打乱顺序，所以不必分散正确答案。",
+  "items": {
+    "c01-q01": {
+      "options": [
+        "BIOS 自检 → 读 MBR（512 字节）→ 加载内核与 initramfs → 启动 PID 1 → 切换到真实根目录 → 按 target 启动服务",
+        "BIOS 自检 → 直接挂载根分区 → 启动 grub → 启动 PID 1",
+        "BIOS 自检 → 读 MBR → 切换到真实根目录 → 加载内核",
+        "BIOS 自检 → 启动 systemd → systemd 加载 grub → 加载内核"
+      ],
+      "answer": 0
+    },
+    "c01-q02": {
+      "options": [
+        "硬链接与源文件 inode 相同、不能跨文件系统、不能指向目录；软链接都反过来",
+        "软链接与源文件 inode 相同，删掉源文件后软链接照样能正常访问",
+        "硬链接可以跨文件系统，软链接不能跨文件系统",
+        "删除源文件后，它的硬链接也会一起失效"
+      ],
+      "answer": 0
+    },
+    "c01-q03": {
+      "options": [
+        "nice 范围 -20~19，值越小优先级越高；renice 能改正在运行的进程",
+        "nice 范围 0~19，值越大优先级越高；renice 只能改还没启动的进程",
+        "nice 范围 -20~19，值越大优先级越高；改完必须重启才生效",
+        "nice 只影响磁盘 IO 顺序，跟 CPU 调度没关系"
+      ],
+      "answer": 0
+    },
+    "c01-q04": {
+      "options": [
+        "mount -o ro /xxx/CentOS.iso /mnt/cdrom  —— ISO 按只读方式 loop 挂载",
+        "mount -o rw /xxx/CentOS.iso /mnt/cdrom  —— 可读写挂载",
+        "cp /xxx/CentOS.iso /mnt/cdrom  —— 复制过去就能直接访问里面的包",
+        "dd if=/xxx/CentOS.iso of=/mnt/cdrom  —— 用 dd 写入即为挂载"
+      ],
+      "answer": 0
+    },
+    "c01-q05": {
+      "options": [
+        "find /opt/tomcat -type f -name '*JDBC*.jsp'",
+        "find /opt/tomcat -name '*JDBC*' -type d",
+        "grep -r JDBC /opt/tomcat",
+        "find /opt/tomcat -name 'JDBC.jsp'"
+      ],
+      "answer": 0
+    },
+    "c01-q06": {
+      "options": [
+        "runlevel 或 systemctl get-default；3 是多用户命令行，5 是图形界面",
+        "runlevel 或 systemctl run-level；3 是图形界面，5 是多用户命令行",
+        "uname -r 可以直接看出当前运行级别",
+        "cat /etc/runlevel 查看当前运行级别"
+      ],
+      "answer": 0
+    },
+    "c01-q07": {
+      "options": [
+        "内核版本用 uname -r；发行版用 cat /etc/os-release 或 lsb_release -d",
+        "uname -r 一次就能同时看出内核版本和发行版",
+        "cat /proc/version 只能看发行版，看不到内核",
+        "lsb_release -d 输出的是内核版本"
+      ],
+      "answer": 0
+    },
+    "c01-q08": {
+      "options": [
+        "50 16 * * * rm -rf /abc/*　／　0 8-18 * * * awk '{print $1}' /xyz/x1 >> /backup/bak01.txt　／　50 17 * * 1 tar -zcf /backup/backup.tar.gz /data",
+        "50 16 * * * rm -rf /abc/*　／　* 8-18 * * * awk '{print $1}' /xyz/x1 >> /backup/bak01.txt　／　50 17 * * 1 tar -zcf /backup/backup.tar.gz /data",
+        "16 50 * * * rm -rf /abc/*　／　0 8-18 * * * awk '{print $1}' /xyz/x1 >> /backup/bak01.txt　／　17 50 * * 1 tar -zcf /backup/backup.tar.gz /data",
+        "50 16 * * * rm -rf /abc/*　／　0 8-18 * * * awk '{print $1}' /xyz/x1 >> /backup/bak01.txt　／　50 17 * * 7 tar -zcf /backup/backup.tar.gz /data"
+      ],
+      "answer": 0
+    },
+    "c01-q09": {
+      "options": [
+        "find /目录 -xdev -printf '%h\\n' | sort | uniq -c | sort -k1 -n",
+        "df -i /目录",
+        "du -sh /目录",
+        "stat /目录"
+      ],
+      "answer": 0
+    },
+    "c01-q10": {
+      "options": [
+        "-ctime 是 inode 状态变更时间（改权限也算），-mtime 才是文件内容修改时间",
+        "-ctime 是文件内容修改时间，-mtime 是 inode 状态变更时间",
+        "-ctime 和 -mtime 完全等价，随便用哪个都行",
+        "Linux 有 -btime 参数可以直接按文件创建时间查找"
+      ],
+      "answer": 0
+    },
+    "c01-q11": {
+      "options": [
+        "ls -f 或 ls -aU：关闭排序，直接按目录顺序输出",
+        "ls -l --color=never：关掉颜色就能快很多",
+        "ls -R：递归列出，速度反而更快",
+        "find . -maxdepth 1：比 ls 慢，别用"
+      ],
+      "answer": 0
+    },
+    "c01-q12": {
+      "options": [
+        "tcpdump -i eth0 -tnn dst port 80 抓包后，用 awk 取 IP 再 sort | uniq -c | sort -nr 统计",
+        "tcpdump -i eth0 port 80 -c 10 抓 10 个包，就自动统计出访问最多的 IP",
+        "tcpdump -i eth0 -w cap.pcap 保存之后不需要再做任何分析",
+        "tcpdump -i eth0 icmp 抓的是 80 端口流量"
+      ],
+      "answer": 0
+    },
+    "c01-q13": {
+      "options": [
+        "find /var/log -type f | wc -l",
+        "du -sh /var/log",
+        "df -h /var/log",
+        "ls /var/log -1R | grep ^d | wc -l"
+      ],
+      "answer": 0
+    },
+    "c01-q14": {
+      "options": [
+        "ss -tan | awk '{print $5}' | cut -d: -f1 | sort | uniq -c | sort -nr",
+        "ss -s 会直接列出每个 IP 的连接数",
+        "对每个对端地址 ping 一次来统计连接数",
+        "netstat -i 能列出每个 IP 的连接数"
+      ],
+      "answer": 0
+    },
+    "c01-q15": {
+      "options": [
+        "tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32",
+        "cat /dev/random | head -1  —— 随机性更好而且不会阻塞",
+        "echo $RANDOM$RANDOM  —— 拼两下就够了 32 位",
+        "date +%s | md5sum  —— 跟着时钟变也算随机"
+      ],
+      "answer": 0
+    },
+    "c01-q16": {
+      "options": [
+        "awk '{print $1}' access.log | sort | uniq -c | sort -nr | head -5",
+        "sort access.log | uniq -c | head -5",
+        "awk '{print $1}' access.log | sort | head -5",
+        "awk '{print $7}' access.log | sort | uniq -c | sort -nr | head -5"
+      ],
+      "answer": 0
+    },
+    "c01-q18": {
+      "options": [
+        "CentOS 7 已于 2024-06-30 EOL，现在多选 Rocky / AlmaLinux 或 Ubuntu LTS",
+        "服务器首选 CentOS 8，它会长期支持到 2029 年",
+        "Fedora 是 RHEL 的稳定版，服务器应该优先选它",
+        "Debian 属于 RHEL 系，可以直接装 rpm 包"
+      ],
+      "answer": 0
+    },
+    "c01-q20": {
+      "options": [
+        "rpm 系用 rpm / yum（dnf），deb 系用 dpkg / apt；源码包要自己编译但可定制",
+        "rpm 包可以直接在 Ubuntu 上安装，无需转换",
+        "yum 只能安装本地 rpm 文件，不能联网",
+        "源码编译不依赖编译器和开发库，装上就能编"
+      ],
+      "answer": 0
+    },
+    "c01-q21": {
+      "options": [
+        "644：属主读写、其他人只读；755：属主读写执行、其他人读+执行；700：仅属主",
+        "644：所有人都能读写；755：所有人都能执行；700：所有人都只读",
+        "755 里第一个 7 表示的是属组的权限",
+        "目录只要给了 r 权限，用户就能 cd 进去"
+      ],
+      "answer": 0
+    },
+    "c01-q25": {
+      "options": [
+        "/proc 是伪文件系统、不占磁盘，cpuinfo / meminfo / net/tcp 都在这里",
+        "/proc 是磁盘上的真实目录，重启后内容依然保留",
+        "/proc 只提供 CPU 相关的信息",
+        "sysctl 改的内核参数存在 /proc 里，所以重启也不会丢"
+      ],
+      "answer": 0
+    },
+    "c01-q27": {
+      "options": [
+        "并行启动服务、支持依赖管理、统一 unit、journalctl 统一日志",
+        "systemd 是串行启动，所以比 sysvinit 慢但更稳定",
+        "systemd 只有 service 这一种 unit 类型",
+        "CentOS 6 默认使用的就是 systemd"
+      ],
+      "answer": 0
+    },
+    "c01-q28": {
+      "options": [
+        "journalctl -u nginx 看服务日志；--vacuum-size=200M 限制日志占用",
+        "journalctl -u nginx 只能看到内核日志",
+        "限制日志占用要用 --vacuumsize=200M（没有连字符）",
+        "journalctl 不支持按时间范围过滤"
+      ],
+      "answer": 0
+    },
+    "c01-q29": {
+      "options": [
+        "僵尸进程：子进程已退出、父进程没调 wait 回收，状态 Z，kill 它无效；孤儿进程：父进程先退出、被子进程被 init/systemd 收养，正常无害",
+        "僵尸进程会大量占用 CPU，所以发现后必须立刻 kill 掉",
+        "孤儿进程是已经死掉但没被回收的进程，会造成 PID 泄漏",
+        "kill -9 能彻底清除僵尸进程，清不掉就是权限不够"
+      ],
+      "answer": 0
+    },
+    "c01-q30": {
+      "options": [
+        "读内核环形缓冲区日志；硬件报错、OOM、文件系统错误优先看它",
+        "dmesg 是应用日志，需要应用自己往里写",
+        "dmesg 里的日志会永久保存，不会被覆盖",
+        "dmesg 主要用于查看网卡收发速率"
+      ],
+      "answer": 0
+    }
+  }
+}

@@ -1,0 +1,16 @@
+# 运行时数据：答题记录属于个人数据，不进仓库
+data/events.json
+data/*.tmp
+data/*.bak
+
+# 依赖与构建产物
+node_modules/
+dist/
+*.log
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

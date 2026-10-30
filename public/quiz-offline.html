@@ -1,0 +1,2712 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0f1115" />
+<title>运维题库</title>
+
+<script>
+/* 先把主题定下来再加载样式，避免刷新时闪白 */
+(function () {
+  var dark = true;
+  try {
+    var s = JSON.parse(localStorage.getItem('quiz.settings') || '{}');
+    var t = s.theme || 'dark';
+    dark = t === 'dark' || (t === 'system' &&
+      window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  } catch (e) {}
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', dark ? '#0f1115' : '#f4f5f9');
+})();
+</script>
+<style>
+/* ==========================================================
+   配色全部走变量。默认深色，[data-theme="light"] 覆盖成浅色。
+   早期主题由 index.html <head> 里的内联脚本先写进 <html data-theme>，
+   避免刷新时先闪一下白底。
+   ========================================================== */
+
+:root {
+  --radius: 16px;
+  color-scheme: dark;
+
+  --bg: #0f1115;
+  --text: #e8eaef;
+  --muted: #98a0b0;
+  --line: #262b36;
+
+  --surface: #171a21;
+  --surface-2: #1c2029;
+  --surface-3: #232833;
+  --track: #262b36;
+  --input-bg: #1a1e26;
+  --follow-bg: #1a1e26;
+  --mark-border: #3c4351;
+  --disabled: #333947;
+
+  --accent: #8b8bf7;
+  --accent-solid: #625df0;
+  --accent-soft: #23244a;
+  --accent-ink: #ffffff;
+
+  --good: #4ade80;
+  --good-soft: #14291e;
+  --half: #fbbf24;
+  --half-soft: #2d2312;
+  --again: #f87171;
+  --again-soft: #2e1618;
+
+  --tabbar-bg: rgba(23, 26, 33, .92);
+  --topbar-fade: rgba(15, 17, 21, 0);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 10px 28px -16px rgba(0, 0, 0, .9);
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, .35);
+  --glow: 0 8px 20px -10px rgba(139, 139, 247, .9);
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #f4f5f9;
+  --text: #171922;
+  --muted: #6b7280;
+  --line: #e6e8ef;
+
+  --surface: #ffffff;
+  --surface-2: #f6f7fb;
+  --surface-3: #eceef5;
+  --track: #e6e8ef;
+  --input-bg: #fafbfd;
+  --follow-bg: #f8f9fc;
+  --mark-border: #cfd2dc;
+  --disabled: #c7c9d6;
+
+  --accent: #4f46e5;
+  --accent-solid: #4f46e5;
+  --accent-soft: #eef0ff;
+  --accent-ink: #ffffff;
+
+  --good: #16a34a;
+  --good-soft: #e9f8ee;
+  --half: #d97706;
+  --half-soft: #fdf4e3;
+  --again: #dc2626;
+  --again-soft: #fdeceb;
+
+  --tabbar-bg: rgba(255, 255, 255, .92);
+  --topbar-fade: rgba(244, 245, 249, 0);
+  --shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 8px 24px -12px rgba(16, 24, 40, .18);
+  --shadow-soft: 0 1px 3px rgba(16, 24, 40, .1);
+  --glow: 0 6px 16px -8px rgba(79, 70, 229, .9);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+/* hidden 必须真的隐藏：否则被 .gradebar{display:grid} / .verifyline{display:flex} 覆盖 */
+[hidden] { display: none !important; }
+
+/* 长命令、长地址在窄屏上要能折行，否则会把整页撑出横向滚动 */
+.answer li, .brow-body li, .opt .otext, .hint, .kv b, .qtext, .follow li {
+  overflow-wrap: anywhere;
+}
+html, body { overflow-x: hidden; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color .18s ease, color .18s ease;
+}
+
+#app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 16px calc(84px + env(safe-area-inset-bottom));
+}
+
+/* ---------- 顶栏 ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 2px 12px;
+  position: sticky;
+  top: 0;
+  background: linear-gradient(var(--bg) 78%, var(--topbar-fade));
+  z-index: 20;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+
+.dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.chip {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.streak {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  font-weight: 700;
+  color: var(--half);
+  background: var(--half-soft);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 15px;
+}
+
+.streak .unit { font-size: 11px; font-weight: 600; opacity: .8; }
+
+/* ---------- 通用 ---------- */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px;
+  margin-bottom: 14px;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.card-head h2 {
+  font-size: 15px;
+  margin: 0;
+  font-weight: 700;
+}
+
+.view { display: none; animation: fade .18s ease; }
+.view.active { display: block; }
+
+@keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+.hint {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 10px 0 0;
+  line-height: 1.55;
+}
+
+.foot {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  margin: 22px 0 0;
+}
+
+/* ---------- 按钮 ---------- */
+.btn {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  padding: 13px 16px;
+  font-size: 15px;
+  font-weight: 650;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform .06s ease, filter .15s ease, background .15s ease;
+  margin-top: 10px;
+}
+
+.btn:active { transform: scale(.985); }
+
+.btn.primary {
+  background: var(--accent-solid);
+  color: var(--accent-ink);
+  box-shadow: var(--glow);
+}
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.primary:disabled { background: var(--disabled); box-shadow: none; cursor: default; color: var(--muted); }
+
+.btn.ghost { background: var(--surface-3); color: var(--text); }
+.btn.ghost:hover { filter: brightness(1.08); }
+
+.btn.danger { background: var(--again-soft); color: var(--again); }
+
+.btn.big { padding: 16px; font-size: 16px; margin-top: 16px; }
+
+.icon-btn {
+  border: 0; background: transparent; font-size: 18px; color: var(--muted);
+  cursor: pointer; padding: 6px 10px; border-radius: 8px; font-family: inherit;
+}
+.icon-btn:hover { background: var(--surface-3); }
+
+/* ---------- 首页 ---------- */
+.hero-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+
+.hero-label { color: var(--muted); font-size: 13px; font-weight: 600; }
+
+.hero-big {
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-big span { font-size: 16px; font-weight: 600; color: var(--muted); margin-left: 4px; }
+
+.hero-sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
+
+.ring { position: relative; width: 76px; height: 76px; flex: 0 0 auto; }
+.ring svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+.ring circle { fill: none; stroke-width: 7; stroke-linecap: round; }
+.ring-bg { stroke: var(--track); }
+.ring-fg {
+  stroke: var(--accent);
+  stroke-dasharray: 188.5;
+  stroke-dashoffset: 188.5;
+  transition: stroke-dashoffset .6s cubic-bezier(.3, 1, .4, 1);
+}
+.ring-label {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+
+.stat { padding: 14px 10px; text-align: center; margin: 0; }
+.stat-num { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+.chapter-list { display: flex; flex-direction: column; gap: 14px; }
+
+.chap-row .chap-top {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 14px; margin-bottom: 6px;
+}
+.chap-row .chap-name { font-weight: 650; }
+.chap-row .chap-num { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+.bar-track { height: 8px; background: var(--track); border-radius: 999px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width .5s ease; }
+.bar-fill.warm { background: linear-gradient(90deg, var(--accent), #a78bfa); }
+
+/* ---------- 答题 ---------- */
+.qbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 6px 0 14px;
+}
+
+.progress-track { flex: 1; height: 6px; background: var(--track); border-radius: 999px; overflow: hidden; }
+.progress-fill { height: 100%; width: 0; background: var(--accent); border-radius: 999px; transition: width .3s ease; }
+
+.qcounter { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.qcard { padding: 20px; }
+
+.qmeta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+
+.tag {
+  font-size: 11px; font-weight: 650;
+  padding: 3px 9px; border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent);
+}
+.tag.ghost { background: var(--surface-3); color: var(--muted); font-weight: 550; }
+
+.qtext {
+  font-size: 19px;
+  line-height: 1.5;
+  font-weight: 700;
+  margin: 0 0 16px;
+  letter-spacing: -0.01em;
+}
+
+.timer {
+  position: relative;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--surface-3);
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 650; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 4px;
+}
+
+.timer-fill {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 100%;
+  background: var(--accent-soft);
+  transition: width 1s linear, background .3s ease;
+}
+
+.timer span { position: relative; z-index: 1; }
+.timer.done .timer-fill { background: var(--half-soft); }
+.timer.done span { color: var(--half); }
+
+/* ---------- 选择题 ---------- */
+.options { display: flex; flex-direction: column; gap: 9px; margin: 6px 0 10px; }
+
+.opt {
+  display: flex; gap: 11px; align-items: flex-start;
+  width: 100%; text-align: left;
+  border: 1.5px solid var(--line); background: var(--surface);
+  border-radius: 13px; padding: 12px 14px;
+  font-family: inherit; font-size: 14.5px; line-height: 1.55; color: var(--text);
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, transform .06s ease;
+}
+.opt:active { transform: scale(.992); }
+.opt:hover:not(.done) { border-color: var(--accent); background: var(--surface-2); }
+
+.opt .mark {
+  flex: 0 0 auto; width: 21px; height: 21px; border-radius: 50%;
+  border: 1.5px solid var(--mark-border); color: var(--muted);
+  display: grid; place-items: center; font-size: 11.5px; font-weight: 750;
+  margin-top: 1px;
+}
+
+.opt.done { cursor: default; }
+.opt.correct { border-color: var(--good); background: var(--good-soft); }
+.opt.correct .mark { border-color: var(--good); background: var(--good); color: #08120c; }
+.opt.wrong { border-color: var(--again); background: var(--again-soft); }
+.opt.wrong .mark { border-color: var(--again); background: var(--again); color: #1a0a0a; }
+.opt.muted { opacity: .5; }
+
+/* ---------- 答案 ---------- */
+.answer { margin-top: 18px; animation: fade .2s ease; }
+
+.answer-title {
+  font-size: 12px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .06em;
+  margin-bottom: 10px;
+}
+
+.answer ol { margin: 0; padding-left: 22px; }
+.answer li { margin-bottom: 9px; line-height: 1.65; font-size: 15px; }
+.answer li::marker { color: var(--accent); font-weight: 700; }
+
+.follow { margin-top: 16px; padding: 12px 14px; background: var(--follow-bg); border-radius: 12px; }
+.follow-title { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+.follow ul { margin: 0; padding-left: 18px; }
+.follow li { font-size: 14px; color: var(--text); opacity: .85; margin-bottom: 4px; }
+
+.gradebar {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  margin-top: 14px;
+}
+
+.grade {
+  border: 0; border-radius: 14px; padding: 12px 8px;
+  font-family: inherit; cursor: pointer;
+  display: flex; flex-direction: column; gap: 2px;
+  transition: transform .06s ease, filter .15s ease;
+}
+.grade:active { transform: scale(.97); }
+.grade b { font-size: 16px; font-weight: 750; }
+.grade span { font-size: 11px; opacity: .7; }
+
+.grade.again { background: var(--again-soft); color: var(--again); }
+.grade.half { background: var(--half-soft); color: var(--half); }
+.grade.good { background: var(--good-soft); color: var(--good); }
+
+.verifyline {
+  display: flex; gap: 10px; align-items: flex-start;
+  background: var(--surface); border-radius: 12px; padding: 12px 14px;
+  font-size: 13px; color: var(--muted);
+  box-shadow: var(--shadow); margin-top: 12px;
+  cursor: pointer;
+}
+.verifyline input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--accent); }
+
+/* ---------- 结算 ---------- */
+.done-card { text-align: center; padding: 28px 20px; }
+.done-emoji { font-size: 44px; line-height: 1; margin-bottom: 8px; }
+.done-card h2 { margin: 0 0 6px; font-size: 20px; }
+.done-sub { color: var(--muted); font-size: 14px; margin: 0 0 18px; }
+
+.done-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  margin: 6px 0 18px;
+}
+.done-grid div {
+  background: var(--surface-2); border-radius: 12px; padding: 10px 6px;
+  font-size: 12px; color: var(--muted);
+}
+.done-grid b { display: block; font-size: 20px; color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* ---------- 分段控件 ---------- */
+.seg {
+  display: flex; gap: 6px; background: var(--surface-3); border-radius: 12px;
+  padding: 4px; margin-bottom: 14px;
+}
+.seg-btn {
+  flex: 1; border: 0; background: transparent; border-radius: 9px;
+  padding: 8px 4px; font-family: inherit; font-size: 13px; font-weight: 600;
+  color: var(--muted); cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.seg-btn.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-soft); }
+
+/* ---------- 题库 ---------- */
+.browse-list { display: flex; flex-direction: column; gap: 8px; }
+
+.brow-item {
+  background: var(--surface); border-radius: 12px; padding: 13px 15px;
+  box-shadow: var(--shadow); cursor: pointer;
+}
+.brow-item .brow-q { font-size: 14.5px; font-weight: 600; line-height: 1.5; }
+.brow-item .brow-meta { display: flex; gap: 8px; margin-top: 7px; font-size: 11.5px; color: var(--muted); flex-wrap: wrap; }
+.brow-item .brow-body { margin-top: 12px; display: none; }
+.brow-item.open .brow-body { display: block; }
+.brow-item .brow-body ol { margin: 0; padding-left: 20px; font-size: 14px; }
+.brow-item .brow-body li { margin-bottom: 7px; }
+
+.state { padding: 1px 7px; border-radius: 999px; font-weight: 650; font-size: 11px; }
+.state.grad { background: var(--good-soft); color: var(--good); }
+.state.wrong { background: var(--again-soft); color: var(--again); }
+.state.learn { background: var(--accent-soft); color: var(--accent); }
+.state.unseen { background: var(--surface-3); color: var(--muted); }
+
+/* ---------- 统计 ---------- */
+.bars { display: flex; align-items: flex-end; gap: 4px; height: 110px; overflow: hidden; }
+.bar-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+.bar-col .b { width: 100%; background: var(--surface-3); border-radius: 4px 4px 2px 2px; min-height: 2px; transition: height .4s ease; }
+.bar-col .b.on { background: var(--accent); }
+.bar-col .l {
+  font-size: 9px; line-height: 1; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  max-width: 100%; white-space: nowrap; overflow: hidden;
+}
+
+.card-sub { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.kv {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px;
+}
+.kv:last-of-type { border-bottom: 0; }
+.kv b { font-weight: 650; font-variant-numeric: tabular-nums; }
+
+.row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0; font-size: 14px; gap: 10px;
+}
+.row input {
+  width: 84px; padding: 7px 10px; border: 1px solid var(--line);
+  border-radius: 9px; font-family: inherit; font-size: 14px; text-align: center;
+  background: var(--input-bg); color: var(--text);
+}
+.row input.wide { width: 62%; text-align: left; font-size: 13px; }
+
+/* ---------- 离线版提示条 ---------- */
+.offline-note {
+  background: var(--accent-soft);
+  box-shadow: none;
+  color: var(--accent);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.offline-note code {
+  background: rgba(127, 127, 127, .18);
+  padding: 1px 5px; border-radius: 4px; font-size: 12px;
+}
+
+/* ---------- 底栏 ---------- */
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  display: flex; justify-content: center; gap: 4px;
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  background: var(--tabbar-bg);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line);
+  z-index: 30;
+}
+
+.tabbar .tab {
+  flex: 1; max-width: 140px;
+  border: 0; background: transparent; font-family: inherit;
+  font-size: 12px; font-weight: 600; color: var(--muted);
+  padding: 8px 4px; border-radius: 10px; cursor: pointer;
+}
+.tabbar .tab.active { color: var(--accent); background: var(--accent-soft); }
+
+@media (min-width: 720px) {
+  .hero-big { font-size: 52px; }
+  .qtext { font-size: 21px; }
+}
+
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <span>运维题库</span>
+      <span class="chip" id="syncChip" hidden>同步中</span>
+    </div>
+    <div class="streak" id="streakBadge" title="连续学习天数">
+      <span id="streakNum">0</span><span class="unit">天</span>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- 首页 -->
+    <section class="view" id="view-home">
+
+  <div class="card offline-note">
+    <b>离线单文件版</b><br>
+    页面完全在手机本地运行，不需要网络。<br>
+    要和电脑同步，去「设置」把<b>同步地址</b>填成 <code>http://电脑IP:8765</code>，
+    并在同一 WiFi 下点「立即同步」。
+  </div>
+
+      <div class="hero card">
+        <div class="hero-top">
+          <div>
+            <div class="hero-label" id="todayLabel">今天的队列</div>
+            <div class="hero-big" id="queueCount">0<span>题</span></div>
+          </div>
+          <div class="ring" id="ring">
+            <svg viewBox="0 0 72 72" aria-hidden="true">
+              <circle class="ring-bg" cx="36" cy="36" r="30"></circle>
+              <circle class="ring-fg" id="ringFg" cx="36" cy="36" r="30"></circle>
+            </svg>
+            <div class="ring-label" id="ringLabel">0%</div>
+          </div>
+        </div>
+        <div class="hero-sub" id="queueBreakdown">到期 0 · 新题 0</div>
+        <button class="btn primary big" id="btnStart">开始今天 10 分钟</button>
+      </div>
+
+      <div class="grid3">
+        <div class="stat card"><div class="stat-num" id="statGrad">0</div><div class="stat-label">已毕业</div></div>
+        <div class="stat card"><div class="stat-num" id="statLearned">0</div><div class="stat-label">学过</div></div>
+        <div class="stat card"><div class="stat-num" id="statWrong">0</div><div class="stat-label">待攻克</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>章节进度</h2>
+        </div>
+        <div id="chapterList" class="chapter-list"></div>
+      </div>
+    </section>
+
+    <!-- 答题 -->
+    <section class="view" id="view-quiz">
+      <div class="qbar">
+        <button class="icon-btn" id="btnQuit" title="退出">✕</button>
+        <div class="progress-track"><div class="progress-fill" id="qProgress"></div></div>
+        <div class="qcounter" id="qCounter">1/10</div>
+      </div>
+
+      <div class="card qcard">
+        <div class="qmeta">
+          <span class="tag" id="qKind">知识点</span>
+          <span class="tag ghost" id="qLevel">难度 3</span>
+          <span class="tag ghost" id="qTag"></span>
+        </div>
+        <h2 class="qtext" id="qText"></h2>
+
+        <div class="timer" id="timerBox">
+          <div class="timer-fill" id="timerFill"></div>
+          <span id="timerText">45s</span>
+        </div>
+        <p class="hint" id="qHint">先自己说出来，说完再点下面的按钮。说不全没关系，卡住的地方才是要记的。</p>
+
+        <div class="options" id="optionsBox" hidden></div>
+
+        <button class="btn primary" id="btnReveal">看答案</button>
+
+        <div class="answer" id="answerBox" hidden>
+          <div class="answer-title">参考答案要点</div>
+          <ol id="answerList"></ol>
+          <div class="follow" id="followBox" hidden>
+            <div class="follow-title">可能的追问</div>
+            <ul id="followList"></ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="gradebar" id="gradeBar" hidden>
+        <button class="grade again" data-k="again"><b>不会</b><span>重来一遍</span></button>
+        <button class="grade half" data-k="half"><b>半对</b><span>明天再见</span></button>
+        <button class="grade good" data-k="good"><b>会</b><span>往后推</span></button>
+      </div>
+
+      <label class="verifyline" id="verifyLine" hidden>
+        <input type="checkbox" id="verifyCheck" />
+        <span>我已经在 VM / 终端里实际跑通过（代码题必须验证才毕业）</span>
+      </label>
+
+      <button class="btn primary" id="btnNext" hidden>下一题</button>
+    </section>
+
+    <!-- 结算 -->
+    <section class="view" id="view-done">
+      <div class="card done-card">
+        <div class="done-emoji" id="doneEmoji">✓</div>
+        <h2 id="doneTitle">今天的队列跑完了</h2>
+        <p class="done-sub" id="doneSub"></p>
+        <div class="done-grid" id="doneGrid"></div>
+        <button class="btn primary" id="btnDoneHome">回到首页</button>
+        <button class="btn ghost" id="btnAgain">再来一轮（错题）</button>
+      </div>
+    </section>
+
+    <!-- 题库 -->
+    <section class="view" id="view-browse">
+      <div class="seg" id="browseSeg">
+        <button class="seg-btn active" data-filter="all">全部</button>
+        <button class="seg-btn" data-filter="wrong">待攻克</button>
+        <button class="seg-btn" data-filter="grad">已毕业</button>
+        <button class="seg-btn" data-filter="unseen">没做过</button>
+      </div>
+      <div id="browseList" class="browse-list"></div>
+    </section>
+
+    <!-- 统计 -->
+    <section class="view" id="view-stats">
+      <div class="card">
+        <div class="card-head"><h2>最近 14 天</h2><span class="card-sub" id="rangeLabel"></span></div>
+        <div class="bars" id="dayBars"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>章节掌握度</h2></div>
+        <div id="chapterStats" class="chapter-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>数据</h2></div>
+        <div class="kv"><span>答题记录</span><b id="evCount">0</b></div>
+        <div class="kv"><span>最早记录</span><b id="evFirst">—</b></div>
+        <div class="kv"><span>最近记录</span><b id="evLast">—</b></div>
+      </div>
+    </section>
+
+    <!-- 设置 -->
+    <section class="view" id="view-settings">
+      <div class="card">
+        <div class="card-head"><h2>同步</h2></div>
+        <div class="kv"><span>服务地址</span><b id="srvAddr">—</b></div>
+        <div class="kv"><span>手机打开</span><b id="phoneUrl">—</b></div>
+        <div class="kv"><span>状态</span><b id="srvState">未连接</b></div>
+        <label class="row"><span>同步地址</span>
+          <input type="text" id="setServer" class="wide" placeholder="留空=同源" autocomplete="off" />
+        </label>
+        <button class="btn ghost" id="btnSyncNow">立即同步</button>
+        <p class="hint">手机上打开 http://电脑IP:8765 时留空即可（同源）。用离线单文件版时，填电脑的 http://IP:8765。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>外观</h2></div>
+        <div class="seg" id="themeSeg">
+          <button class="seg-btn" data-theme="light">浅色</button>
+          <button class="seg-btn active" data-theme="dark">深色</button>
+          <button class="seg-btn" data-theme="system">跟随系统</button>
+        </div>
+        <p class="hint">深色模式在晚上看着舒服一些；「跟随系统」会跟着你电脑/手机的浅深色设置走。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>答题形态</h2></div>
+        <div class="seg" id="modeSeg">
+          <button class="seg-btn active" data-mode="blend">混合</button>
+          <button class="seg-btn" data-mode="choice">全选择</button>
+          <button class="seg-btn" data-mode="oral">全口述</button>
+        </div>
+        <p class="hint">混合 = 知识点题出选择题、命令题和场景题仍口述；全选择 = 有选项的就出选择题；全口述 = 全部先自己说再对答案。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>节奏</h2></div>
+        <label class="row"><span>每天新题</span><input type="number" id="setNew" min="1" max="20" value="5" /></label>
+        <label class="row"><span>单次上限</span><input type="number" id="setMax" min="3" max="30" value="12" /></label>
+        <label class="row"><span>思考计时（秒）</span><input type="number" id="setTimer" min="0" max="300" value="45" /></label>
+        <p class="hint">计时归零只是提醒，不会判你错。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>数据</h2></div>
+        <button class="btn ghost" id="btnExport">导出记录（JSON）</button>
+        <button class="btn ghost" id="btnImport">导入记录</button>
+        <input type="file" id="fileImport" accept="application/json" hidden />
+        <button class="btn danger" id="btnReset">清空本机记录</button>
+        <p class="hint">换手机、清缓存前先导出。iOS 长时间不用网页可能清理本地数据。</p>
+      </div>
+
+      <p class="foot" id="footLine">运维题库 v1 · 内容整理自《运维面试宝典 V4.0》</p>
+    </section>
+
+  </main>
+
+  <nav class="tabbar" id="tabbar">
+    <button class="tab active" data-view="home">首页</button>
+    <button class="tab" data-view="browse">题库</button>
+    <button class="tab" data-view="stats">统计</button>
+    <button class="tab" data-view="settings">设置</button>
+  </nav>
+
+</div>
+
+<script>window.__QUIZ_EMBEDDED__ = {
+  "version": 1,
+  "generated": "2026-10-29",
+  "chapters": [
+    { "id": 1, "title": "Linux 基础篇", "short": "Linux 基础" }
+  ],
+  "items": [
+    {
+      "id": "c01-q01", "ch": 1, "kind": "concept", "level": 3, "src": "edited",
+      "tag": ["启动", "systemd"],
+      "q": "描述 Linux 系统的启动过程",
+      "a": [
+        "服务器加电 → BIOS 自检，检查硬件信息",
+        "按 BIOS 启动项启动（硬盘 / 光盘 / U 盘 / 网络），默认硬盘",
+        "读 MBR：512 字节 = 446 字节引导程序 + 64 字节分区表 + 2 字节魔数（55AA）",
+        "读 grub.cfg，把内核 vmlinuz 和 initramfs 加载进内存",
+        "内核启动 PID 1（systemd），并加载 /etc/fstab 挂载文件系统",
+        "从 initramfs 切换到磁盘真实根目录（switch_root）",
+        "读 /etc/systemd/system/default.target 确定运行级别",
+        "systemd 启动 multi-user.target 下的服务，并执行 /etc/rc.d/rc.local",
+        "启动 getty.target 与登录服务；需要图形界面再启动 graphical.target"
+      ],
+      "follow": ["UEFI 机器上第 3 步有什么不同？", "grub 和 grub2 的区别是什么？"]
+    },
+    {
+      "id": "c01-q02", "ch": 1, "kind": "concept", "level": 2, "src": "edited",
+      "tag": ["文件系统", "inode"],
+      "q": "描述 Linux 下软硬链接的区别",
+      "a": [
+        "硬链接与源文件 inode 相同；软链接是独立文件，inode 不同",
+        "硬链接不能指向目录；软链接可以，且常用来做版本切换",
+        "删源文件：硬链接照常可用；软链接变成断链（ls 显示闪烁红字）",
+        "硬链接不能跨文件系统；软链接可以",
+        "硬链接权限与源文件一致；软链接权限显示 777，实际由目标文件决定"
+      ],
+      "follow": ["删掉源文件后，磁盘空间什么时候才真正释放？"]
+    },
+    {
+      "id": "c01-q03", "ch": 1, "kind": "code", "level": 2, "src": "edited", "verify": true,
+      "tag": ["进程", "nice"],
+      "q": "如何查看和修改 Linux 进程优先级",
+      "a": [
+        "查看：top 看 PR / NI 两列，或 ps -exo pid,pri,nice,command",
+        "renice <nice值> -p <PID> 修改正在运行的进程",
+        "top 里按 r，再输入 PID 和 nice 值",
+        "nice -n <nice值> <命令> 在启动时指定",
+        "nice 范围 -20 ~ 19，值越小优先级越高；子进程默认继承父进程 nice"
+      ],
+      "follow": ["普通用户能把 nice 调成负数吗？为什么？"]
+    },
+    {
+      "id": "c01-q04", "ch": 1, "kind": "code", "level": 2, "src": "edited", "verify": true,
+      "tag": ["挂载", "存储"],
+      "q": "如何将 CentOS.ISO 文件挂载到 /mnt/cdrom",
+      "a": [
+        "mkdir -p /mnt/cdrom",
+        "mount -o ro /xxx/CentOS.iso /mnt/cdrom",
+        "开机自动挂载：写 /etc/fstab，或用 systemd 的 .mount 单元",
+        "老写法 echo ... >> /etc/rc.local 在 CentOS 7+ 需要 chmod +x /etc/rc.d/rc.local",
+        "卸载：umount /mnt/cdrom"
+      ],
+      "follow": ["挂载 ISO 和挂载一个磁盘分区，命令有什么区别？"]
+    },
+    {
+      "id": "c01-q05", "ch": 1, "kind": "code", "level": 2, "src": "edited", "verify": true,
+      "tag": ["find", "查找"],
+      "q": "查找 /opt/tomcat/ 目录下文件名含 JDBC 的 jsp 文件",
+      "a": [
+        "find /opt/tomcat -type f -name '*JDBC*.jsp'",
+        "按文件名匹配用 -name；按文件内容匹配用 grep -rl JDBC /opt/tomcat --include='*.jsp'",
+        "-type f 只找普通文件，排除目录",
+        "注意：文档原文写成 *.jpg 是笔误，题目问的是 jsp"
+      ],
+      "follow": ["要让 find 不跨文件系统，加什么参数？"]
+    },
+    {
+      "id": "c01-q06", "ch": 1, "kind": "concept", "level": 1, "src": "edited",
+      "tag": ["运行级别"],
+      "q": "如何查看 Linux 服务器运行级别",
+      "a": [
+        "runlevel（sysvinit 老系统）",
+        "systemctl get-default（RHEL / CentOS 7+）",
+        "级别含义：0 关机、1 单用户、3 多用户命令行、5 图形界面、6 重启"
+      ],
+      "follow": ["怎么把系统默认启动到命令行而不是图形界面？"]
+    },
+    {
+      "id": "c01-q07", "ch": 1, "kind": "code", "level": 1, "src": "edited", "verify": true,
+      "tag": ["版本"],
+      "q": "如何查看 Linux 服务器系统和内核版本",
+      "a": [
+        "系统版本：lsb_release -d，或 cat /etc/redhat-release，或 cat /etc/os-release",
+        "内核版本：uname -r",
+        "一次看全：uname -a（内核 + 主机名 + 架构）"
+      ],
+      "follow": ["/etc/redhat-release 在 Ubuntu 上存在吗？"]
+    },
+    {
+      "id": "c01-q08", "ch": 1, "kind": "code", "level": 4, "src": "edited", "verify": true,
+      "tag": ["crontab", "计划任务"],
+      "q": "某管理员需每天做重复工作：①每天 16:50 删除 /abc 下全部子目录和文件；②早 8 点到晚 6 点每小时把 /xyz/x1 每行第一个域追加到 /backup/bak01.txt；③每周一 17:50 把 /data 打包成 backup.tar.gz。请写出 crontab",
+      "a": [
+        "50 16 * * *  rm -rf /abc/*",
+        "0 8-18 * * *  awk '{print $1}' /xyz/x1 >> /backup/bak01.txt",
+        "50 17 * * 1  tar -zcf /backup/backup.tar.gz /data",
+        "易错点：第二条的分钟位必须是 0，写成 * 就变成每分钟跑一次",
+        "考点是 crontab 五个时间位：分 时 日 月 周"
+      ],
+      "follow": ["为什么 crontab 里要用绝对路径？"]
+    },
+    {
+      "id": "c01-q09", "ch": 1, "kind": "code", "level": 3, "src": "edited", "verify": true,
+      "tag": ["inode", "find"],
+      "q": "如何查看一个文件夹 inode 节点数有多少",
+      "a": [
+        "find /目录 -xdev -printf '%h\\n' | sort | uniq -c | sort -k1 -n",
+        "思路：打印每个文件所在的目录 → 排序去重计数，近似该目录填充的 inode 数",
+        "-xdev 保证不跨文件系统",
+        "查整个文件系统的 inode 用量，用 df -ih 更直接"
+      ],
+      "follow": ["inode 用满了但磁盘还有空间，会发生什么？"]
+    },
+    {
+      "id": "c01-q10", "ch": 1, "kind": "code", "level": 4, "src": "edited", "verify": true,
+      "tag": ["find", "清理"],
+      "q": "查找最后创建时间是 3 天前、后缀是 *.log 的文件并删除",
+      "a": [
+        "find /路径 -ctime +3 -name '*.log' -delete",
+        "等价写法：-exec rm -rf {} \\; 或 | xargs rm -f（文件名带空格要用 -print0 | xargs -0）",
+        "注意：-ctime 是 inode 状态变更时间（改权限也算），-mtime 才是内容修改时间",
+        "Linux 没有对外暴露「创建时间」字段，按日志几天没动来清理应该用 -mtime"
+      ],
+      "follow": ["-delete 和 -exec rm 哪个更安全？为什么？"]
+    },
+    {
+      "id": "c01-q11", "ch": 1, "kind": "concept", "level": 2, "src": "edited",
+      "tag": ["ls", "运维技巧"],
+      "q": "如果某文件夹下文件太多无法 ls，该如何解决",
+      "a": [
+        "ls -f：不排序，直接按目录顺序输出",
+        "ls -aU：-U 关闭排序，-a 包含隐藏文件",
+        "原因：ls 默认要排序，几十万文件时排序开销极大甚至卡死"
+      ],
+      "follow": ["rm -rf 删一个几十万文件的目录很慢，有什么办法加速？"]
+    },
+    {
+      "id": "c01-q12", "ch": 1, "kind": "code", "level": 3, "src": "edited", "verify": true,
+      "tag": ["tcpdump", "网络"],
+      "q": "如何用 tcpdump 嗅探 80 端口的访问，看看谁访问最多",
+      "a": [
+        "tcpdump -i eth0 -tnn dst port 80 | awk '{print $3}' | cut -d. -f1-4 | sort | uniq -c | sort -nr",
+        "参数：-i 指定网卡；-tnn 不打时间戳、地址端口全用数字；dst port 80 只抓发往 80 的包",
+        "更轻量的做法：ss -tan state established | awk '{print $5}' | cut -d: -f1 | sort | uniq -c | sort -nr",
+        "注意：不加 -c 会一直抓，要自己控制时长"
+      ],
+      "follow": ["抓包时如果发现大量重传，说明什么？"]
+    },
+    {
+      "id": "c01-q13", "ch": 1, "kind": "code", "level": 2, "src": "edited", "verify": true,
+      "tag": ["统计", "wc"],
+      "q": "如何查看 /var/log 目录下的文件数",
+      "a": [
+        "ls /var/log/ -1R | grep ^- | wc -l",
+        "更稳的写法：find /var/log -type f | wc -l",
+        "只统计当前层：ls -l /var/log | grep -c '^-'"
+      ],
+      "follow": ["ls -1R 里的 -1 是干什么的？"]
+    },
+    {
+      "id": "c01-q14", "ch": 1, "kind": "code", "level": 3, "src": "edited", "verify": true,
+      "tag": ["netstat", "ss", "连接"],
+      "q": "如何查看 Linux 系统每个 IP 的连接数",
+      "a": [
+        "netstat -n | awk '/^tcp/{print $5}' | awk -F: '{print $1}' | sort | uniq -c | sort -nr",
+        "更快的替代：ss -tan | awk 'NR>1{print $5}' | cut -d: -f1 | sort | uniq -c | sort -nr",
+        "思路：$5 是对端地址（IP:端口），按冒号切出 IP，再排序去重计数",
+        "连接数上万时 ss 比 netstat 快一个量级"
+      ],
+      "follow": ["怎么只看 ESTABLISHED 状态的连接？"]
+    },
+    {
+      "id": "c01-q15", "ch": 1, "kind": "code", "level": 2, "src": "edited", "verify": true,
+      "tag": ["随机", "shell"],
+      "q": "shell 下生成 32 位随机密码",
+      "a": [
+        "cat /dev/urandom | head -1 | md5sum | head -c 32",
+        "更可靠的写法：tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32（可控制字符集）",
+        "注意：/dev/random 会阻塞，生产脚本别用"
+      ],
+      "follow": ["/dev/urandom 和 /dev/random 的区别是什么？"]
+    },
+    {
+      "id": "c01-q16", "ch": 1, "kind": "code", "level": 3, "src": "edited", "verify": true,
+      "tag": ["awk", "日志统计"],
+      "q": "统计 apache 的 access.log 中访问量最多的 5 个 IP",
+      "a": [
+        "awk '{print $1}' access.log | sort | uniq -c | sort -nr | head -5",
+        "经典四段式：取第一列 → 排序 → 去重计数 → 倒序 → 取前 5",
+        "加条件（只统计 200）：awk '$9==200{print $1}' access.log | sort | uniq -c | sort -nr | head -5",
+        "统计 TOP5 URL：把 $1 换成 $7"
+      ],
+      "follow": ["如果要统计每秒的请求数（QPS 峰值），怎么改？"]
+    },
+    {
+      "id": "c01-q17", "ch": 1, "kind": "scenario", "level": 3, "src": "edited",
+      "tag": ["网络排障", "桌面"],
+      "q": "如果一台办公室内电脑无法上网（打不开网站），请给出排查步骤",
+      "a": [
+        "物理层：网线是否插好、网口灯是否亮、无线是否连上",
+        "本机配置：ip addr 看 IP 和掩码，ip route 看默认网关是否合理",
+        "ping 网关，不通则往上查交换机、路由器",
+        "网关通 → ping 8.8.8.8 验证外网连通",
+        "外网通但打不开网页 → 查 DNS 解析（nslookup baidu.com）",
+        "同一局域网其他主机正常时，换网线或换交换机插口再试"
+      ],
+      "follow": ["怎么快速证明「是 DNS 的问题」而不是网络不通？"]
+    },
+    {
+      "id": "c01-q18", "ch": 1, "kind": "concept", "level": 3, "src": "edited",
+      "tag": ["选型", "发行版"],
+      "q": "如何选择 Linux 操作系统版本",
+      "a": [
+        "老答案「服务器首选 CentOS」已经过时：CentOS 8 于 2021-12-31 停维，CentOS 7 于 2024-06-30 EOL",
+        "平滑迁移：Rocky Linux / AlmaLinux，RHEL 1:1 兼容、社区主导",
+        "新业务和云上：Ubuntu LTS",
+        "需要商业支持：RHEL / SUSE；安全性要求高：Debian / FreeBSD",
+        "回答时主动说明版本生命周期，比背发行版名字加分"
+      ],
+      "follow": ["Rocky 和 AlmaLinux 有什么区别？"]
+    },
+    {
+      "id": "c01-q19", "ch": 1, "kind": "scenario", "level": 4, "src": "edited",
+      "tag": ["磁盘", "inode", "排障"],
+      "q": "分析为什么一块磁盘空间足够却不能在上面创建文件",
+      "a": [
+        "先排除权限：当前用户对该目录是否有写权限、是否设了 quota、文件系统是否只读",
+        "df -ih 看 inode 使用率：100% 说明 inode 耗尽，即使还有空闲 block 也建不了文件",
+        "清理大量小文件（缓存、session、日志碎片）",
+        "判断是本地盘还是网络存储，网络设备还要排除网络原因"
+      ],
+      "follow": ["inode 数量在格式化时就定了，用完能扩容吗？"]
+    },
+    {
+      "id": "c01-q20", "ch": 1, "kind": "concept", "level": 2, "src": "edited",
+      "tag": ["包管理"],
+      "q": "简述 Linux 系统软件包安装方式及特点",
+      "a": [
+        "rpm 系：本地 rpm / rpmbuild，在线 yum / dnf",
+        "deb 系：本地 dpkg，在线 apt",
+        "源码包：./configure → make → make install，可定制但依赖要自己解决",
+        "二进制包：安装快、依赖自动解决，但版本受仓库限制、路径固定"
+      ],
+      "follow": ["yum 和 rpm 的关系是什么？"]
+    },
+    {
+      "id": "c01-q21", "ch": 1, "kind": "concept", "level": 2, "src": "edited",
+      "tag": ["权限"],
+      "q": "Linux 权限数字 644、755、700 代表什么，简述最小权限原则",
+      "a": [
+        "644：属主读写，属组和其他只读 —— 普通文件默认权限",
+        "755：属主读写执行，属组和其他读 + 执行 —— 程序 / 目录权限",
+        "700：仅属主读写执行 —— 密钥、配置文件",
+        "最小权限原则：用户 / 进程只分配完成工作所必须的权限",
+        "目录的 r 是能列目录、x 是能进入、w 是能增删文件，三者含义不同"
+      ],
+      "follow": ["一个目录权限是 644，用户能 cd 进去吗？"]
+    },
+    {
+      "id": "c01-q22", "ch": 1, "kind": "scenario", "level": 5, "src": "edited",
+      "tag": ["排障", "CPU"],
+      "q": "服务器 CPU 100%，请写出完整排查流程",
+      "a": [
+        "uptime 看负载，top 看 us/sy/id/wa，先定性瓶颈在哪",
+        "us 高 = 业务算力；sy 高 = 系统调用 / 大量小文件 IO；wa 高 = 磁盘瓶颈；si/hi 高 = 中断",
+        "top 按 P 排序定位 PID；按 shift+H 打开线程视图，定位具体线程",
+        "ps -T -p PID 看线程；perf top 看热点内核函数",
+        "结合业务日志判断：死循环、锁竞争，还是 IO 阻塞",
+        "临时止损：renice 调大 nice 值让出 CPU，必要时重启",
+        "根治：优化代码 / 调内核参数；事后记录时间点和指标，复盘根因"
+      ],
+      "follow": ["如果 wa 很高但 us 不高，你还会盯着 CPU 查吗？"]
+    },
+    {
+      "id": "c01-q23", "ch": 1, "kind": "scenario", "level": 5, "src": "edited",
+      "tag": ["排障", "内存", "OOM"],
+      "q": "服务器 OOM（内存溢出）发生了，如何排查",
+      "a": [
+        "dmesg -T | grep -i oom 确认 OOM Killer 杀了哪个进程",
+        "free -h、vmstat 看内存和 swap；看 /proc/meminfo",
+        "top / ps aux / pidstat 分析进程内存占用",
+        "区分三种原因：内存泄漏、流量突增、配置的内存上限过大",
+        "临时：重启业务、扩容内存；根治：修泄漏、调 JVM 参数、加缓存层",
+        "容器场景：Pod 超 memory limit 会 OOMKilled，看 kubectl describe pod 的 Last State"
+      ],
+      "follow": ["怎么判断是「真的泄漏」还是「只是峰值高」？"]
+    },
+    {
+      "id": "c01-q24", "ch": 1, "kind": "scenario", "level": 4, "src": "edited",
+      "tag": ["lsof", "磁盘"],
+      "q": "lsof 命令常见使用场景，删除文件后空间不释放如何处理",
+      "a": [
+        "lsof 用途：查看进程打开的文件和端口",
+        "lsof -i:端口 查端口占用；lsof -p PID 看进程打开的所有文件",
+        "lsof | grep deleted 查已删除但句柄未释放的文件",
+        "原因：rm 只删掉目录项，进程仍持有句柄，inode 和 block 不会回收",
+        "处理：> access.log 清空文件（生产推荐），或重启进程释放句柄",
+        "结论：不要直接 rm 正在写的大日志文件"
+      ],
+      "follow": ["为什么 > access.log 不会中断应用写入？"]
+    },
+    {
+      "id": "c01-q25", "ch": 1, "kind": "concept", "level": 2, "src": "edited",
+      "tag": ["proc", "内核"],
+      "q": "简述 /proc 文件系统作用，常用查看哪些信息",
+      "a": [
+        "/proc 是伪文件系统，不占用磁盘，由内核实时输出信息",
+        "/proc/cpuinfo 看 CPU，/proc/meminfo 看内存",
+        "/proc/net/tcp 是连接表；/proc/PID/ 下有 cmdline、status、fd",
+        "还有 /proc/loadavg、/proc/uptime；/proc/sys/ 是内核参数，sysctl 改的就是这里"
+      ],
+      "follow": ["怎么看某个进程占用了哪些文件描述符？"]
+    },
+    {
+      "id": "c01-q26", "ch": 1, "kind": "scenario", "level": 3, "src": "edited",
+      "tag": ["内存", "swap"],
+      "q": "什么是 swap 交换分区，生产环境 swap 调优策略",
+      "a": [
+        "swap 用磁盘空间充当虚拟内存，内存不足时把冷数据置换到磁盘",
+        "不要完全关闭 swap：内存突发时没有缓冲，会直接被 OOM Kill",
+        "vm.swappiness 业务服务器建议 10–30，减少不必要的换出",
+        "swap 持续高使用说明物理内存确实不足，优先扩容内存，而不是调参硬扛"
+      ],
+      "follow": ["数据库服务器为什么不建议用 swap？"]
+    },
+    {
+      "id": "c01-q27", "ch": 1, "kind": "concept", "level": 2, "src": "edited",
+      "tag": ["systemd"],
+      "q": "systemd 和传统 sysvinit 相比有哪些优势",
+      "a": [
+        "并行启动服务，开机速度明显更快（sysvinit 是串行）",
+        "支持服务依赖关系管理",
+        "统一用 unit 管理 service / socket / mount / timer",
+        "journalctl 统一日志；支持崩溃自动重启、cgroup 资源限制",
+        "CentOS 7+ 默认 systemd，统一用 systemctl 管理"
+      ],
+      "follow": ["怎么让一个服务开机自启？"]
+    },
+    {
+      "id": "c01-q28", "ch": 1, "kind": "code", "level": 3, "src": "edited", "verify": true,
+      "tag": ["journalctl", "日志"],
+      "q": "journalctl 常用命令，如何查看某个服务日志",
+      "a": [
+        "journalctl -u nginx 查看服务日志",
+        "journalctl -u nginx --since '2026-10-01 10:00:00' 指定时间，可加 --until",
+        "journalctl -f -u nginx 实时跟踪",
+        "journalctl --vacuum-size=200M 限制日志占用（注意是 --vacuum-size）",
+        "journalctl -p err -b 看本次开机以来的 error 级别日志"
+      ],
+      "follow": ["journal 日志默认存在哪个目录？怎么改成写文件？"]
+    },
+    {
+      "id": "c01-q29", "ch": 1, "kind": "concept", "level": 4, "src": "edited",
+      "tag": ["进程", "僵尸"],
+      "q": "Linux 中什么是孤儿进程、僵尸进程，如何处理僵尸进程",
+      "a": [
+        "僵尸进程：子进程已退出，父进程没有 wait/waitpid 回收，PCB 残留，状态为 Z",
+        "孤儿进程：父进程先退出，子进程被 init/systemd 收养，正常无害",
+        "处理僵尸：修复父进程代码正确回收，或重启父进程",
+        "不要直接 kill 僵尸 PID —— 它已经死了，kill 无效",
+        "僵尸不占 CPU，但占用 PID 和内核进程表项，数量大了无法 fork 新进程"
+      ],
+      "follow": ["僵尸进程会占用内存吗？"]
+    },
+    {
+      "id": "c01-q30", "ch": 1, "kind": "concept", "level": 3, "src": "edited",
+      "tag": ["dmesg", "排障"],
+      "q": "dmesg 命令的用途，哪些故障优先看 dmesg",
+      "a": [
+        "dmesg 输出内核环形缓冲区日志，记录内核和驱动的运行信息",
+        "优先看：硬件报错（磁盘坏道、网卡丢包）、OOM Killer、文件系统错误、内核崩溃",
+        "常用参数：-T 转可读时间、-w 实时跟踪、-l err,crit 只看错误级别",
+        "kernel.dmesg_restrict=1 时普通用户看不了，需要 root"
+      ],
+      "follow": ["ring buffer 满了会怎样？"]
+    },
+    {
+      "id": "c01-a01", "ch": 1, "kind": "acceptance", "level": 3, "src": "written",
+      "tag": ["验收", "磁盘"],
+      "q": "【验收一】一台服务器 df -h 显示还有 20% 空间，但应用持续报 No space left on device。请说出完整排查步骤，以及每一步的判断依据。",
+      "a": [
+        "第一步 df -h：确认到底哪个挂载点满、是不是应用的写入目录，先排除「看错了盘」",
+        "第二步 df -ih：看 inode 使用率，100% 就是 inode 耗尽（最常见的原因）",
+        "第三步 查配额与只读：quota、mount | grep ro，排除权限和只读挂载",
+        "第四步 查被删文件占句柄：lsof | grep deleted，找出还开着已删除文件的进程",
+        "第五步 网络存储：NFS 要查服务端配额和网络，本地 df 不可信",
+        "最后按原因给处置：清小文件 / 重建文件系统扩 inode / 重启持句柄进程"
+      ],
+      "follow": ["如果是容器里报这个错，还要多查什么？"]
+    },
+    {
+      "id": "c01-a02", "ch": 1, "kind": "acceptance", "level": 4, "src": "written",
+      "tag": ["验收", "综合排障"],
+      "q": "【验收二】业务反馈「接口变慢，机器像卡住了」。你只有 10 分钟定位，请按顺序说出你会执行的命令，以及每一步在看什么。",
+      "a": [
+        "uptime：负载是否超过 CPU 核数，先判断是整体过载还是局部问题",
+        "top：一屏看 CPU、内存、wa，先定性瓶颈在哪类资源",
+        "free -h：内存和 swap 是否吃紧，swap 是否被大量使用",
+        "df -h 和 df -ih：排除磁盘写满与 inode 耗尽",
+        "iostat -x 1：看 %util 和 await，确认是不是磁盘 IO 瓶颈",
+        "ss -s / ss -tan：看连接状态分布，TIME-WAIT、CLOSE-WAIT 是否异常",
+        "dmesg -T | tail -50：看有没有 OOM、硬件报错",
+        "最后必须落到结论：瓶颈资源 + 可疑进程 + 一个临时止损动作"
+      ],
+      "follow": ["如果所有指标都正常，但业务就是慢，下一步查什么？"]
+    },
+    {
+      "id": "c01-a03", "ch": 1, "kind": "acceptance", "level": 5, "src": "written",
+      "tag": ["验收", "巡检"],
+      "q": "【验收三】接手一台陌生服务器，30 分钟内要交一份能直接给主管的巡检报告。请说出你会采集哪些项、用什么命令、报告怎么组织。",
+      "a": [
+        "系统底座：uname -a、cat /etc/os-release、uptime",
+        "CPU / 内存：lscpu、free -h、vmstat 1 5",
+        "磁盘：df -h、df -ih、lsblk、iostat -x 1 3",
+        "网络：ip addr、ip route、ss -s、ss -tulnp",
+        "异常：dmesg -T | tail -50、journalctl -p err -b",
+        "进程 TOP：ps aux --sort=-%cpu | head、ps aux --sort=-%mem | head",
+        "报告结构：结论先行（健康 / 风险）→ 关键指标表 → 风险项与建议 → 附原始命令输出",
+        "加分项：说明哪些项是「现在正常但需要持续观察」的趋势指标"
+      ],
+      "follow": ["如果主管只给你三行字的空间，你会写哪三行？"]
+    }
+  ]
+}
+;</script>
+<script>window.__QUIZ_MC__ = {
+  "version": 1,
+  "note": "选择题选项。answer 为正确项下标；渲染时会按题目 id 稳定打乱顺序，所以不必分散正确答案。",
+  "items": {
+    "c01-q01": {
+      "options": [
+        "BIOS 自检 → 读 MBR（512 字节）→ 加载内核与 initramfs → 启动 PID 1 → 切换到真实根目录 → 按 target 启动服务",
+        "BIOS 自检 → 直接挂载根分区 → 启动 grub → 启动 PID 1",
+        "BIOS 自检 → 读 MBR → 切换到真实根目录 → 加载内核",
+        "BIOS 自检 → 启动 systemd → systemd 加载 grub → 加载内核"
+      ],
+      "answer": 0
+    },
+    "c01-q02": {
+      "options": [
+        "硬链接与源文件 inode 相同、不能跨文件系统、不能指向目录；软链接都反过来",
+        "软链接与源文件 inode 相同，删掉源文件后软链接照样能正常访问",
+        "硬链接可以跨文件系统，软链接不能跨文件系统",
+        "删除源文件后，它的硬链接也会一起失效"
+      ],
+      "answer": 0
+    },
+    "c01-q03": {
+      "options": [
+        "nice 范围 -20~19，值越小优先级越高；renice 能改正在运行的进程",
+        "nice 范围 0~19，值越大优先级越高；renice 只能改还没启动的进程",
+        "nice 范围 -20~19，值越大优先级越高；改完必须重启才生效",
+        "nice 只影响磁盘 IO 顺序，跟 CPU 调度没关系"
+      ],
+      "answer": 0
+    },
+    "c01-q04": {
+      "options": [
+        "mount -o ro /xxx/CentOS.iso /mnt/cdrom  —— ISO 按只读方式 loop 挂载",
+        "mount -o rw /xxx/CentOS.iso /mnt/cdrom  —— 可读写挂载",
+        "cp /xxx/CentOS.iso /mnt/cdrom  —— 复制过去就能直接访问里面的包",
+        "dd if=/xxx/CentOS.iso of=/mnt/cdrom  —— 用 dd 写入即为挂载"
+      ],
+      "answer": 0
+    },
+    "c01-q05": {
+      "options": [
+        "find /opt/tomcat -type f -name '*JDBC*.jsp'",
+        "find /opt/tomcat -name '*JDBC*' -type d",
+        "grep -r JDBC /opt/tomcat",
+        "find /opt/tomcat -name 'JDBC.jsp'"
+      ],
+      "answer": 0
+    },
+    "c01-q06": {
+      "options": [
+        "runlevel 或 systemctl get-default；3 是多用户命令行，5 是图形界面",
+        "runlevel 或 systemctl run-level；3 是图形界面，5 是多用户命令行",
+        "uname -r 可以直接看出当前运行级别",
+        "cat /etc/runlevel 查看当前运行级别"
+      ],
+      "answer": 0
+    },
+    "c01-q07": {
+      "options": [
+        "内核版本用 uname -r；发行版用 cat /etc/os-release 或 lsb_release -d",
+        "uname -r 一次就能同时看出内核版本和发行版",
+        "cat /proc/version 只能看发行版，看不到内核",
+        "lsb_release -d 输出的是内核版本"
+      ],
+      "answer": 0
+    },
+    "c01-q08": {
+      "options": [
+        "50 16 * * * rm -rf /abc/*　／　0 8-18 * * * awk '{print $1}' /xyz/x1 >> /backup/bak01.txt　／　50 17 * * 1 tar -zcf /backup/backup.tar.gz /data",
+        "50 16 * * * rm -rf /abc/*　／　* 8-18 * * * awk '{print $1}' /xyz/x1 >> /backup/bak01.txt　／　50 17 * * 1 tar -zcf /backup/backup.tar.gz /data",
+        "16 50 * * * rm -rf /abc/*　／　0 8-18 * * * awk '{print $1}' /xyz/x1 >> /backup/bak01.txt　／　17 50 * * 1 tar -zcf /backup/backup.tar.gz /data",
+        "50 16 * * * rm -rf /abc/*　／　0 8-18 * * * awk '{print $1}' /xyz/x1 >> /backup/bak01.txt　／　50 17 * * 7 tar -zcf /backup/backup.tar.gz /data"
+      ],
+      "answer": 0
+    },
+    "c01-q09": {
+      "options": [
+        "find /目录 -xdev -printf '%h\\n' | sort | uniq -c | sort -k1 -n",
+        "df -i /目录",
+        "du -sh /目录",
+        "stat /目录"
+      ],
+      "answer": 0
+    },
+    "c01-q10": {
+      "options": [
+        "-ctime 是 inode 状态变更时间（改权限也算），-mtime 才是文件内容修改时间",
+        "-ctime 是文件内容修改时间，-mtime 是 inode 状态变更时间",
+        "-ctime 和 -mtime 完全等价，随便用哪个都行",
+        "Linux 有 -btime 参数可以直接按文件创建时间查找"
+      ],
+      "answer": 0
+    },
+    "c01-q11": {
+      "options": [
+        "ls -f 或 ls -aU：关闭排序，直接按目录顺序输出",
+        "ls -l --color=never：关掉颜色就能快很多",
+        "ls -R：递归列出，速度反而更快",
+        "find . -maxdepth 1：比 ls 慢，别用"
+      ],
+      "answer": 0
+    },
+    "c01-q12": {
+      "options": [
+        "tcpdump -i eth0 -tnn dst port 80 抓包后，用 awk 取 IP 再 sort | uniq -c | sort -nr 统计",
+        "tcpdump -i eth0 port 80 -c 10 抓 10 个包，就自动统计出访问最多的 IP",
+        "tcpdump -i eth0 -w cap.pcap 保存之后不需要再做任何分析",
+        "tcpdump -i eth0 icmp 抓的是 80 端口流量"
+      ],
+      "answer": 0
+    },
+    "c01-q13": {
+      "options": [
+        "find /var/log -type f | wc -l",
+        "du -sh /var/log",
+        "df -h /var/log",
+        "ls /var/log -1R | grep ^d | wc -l"
+      ],
+      "answer": 0
+    },
+    "c01-q14": {
+      "options": [
+        "ss -tan | awk '{print $5}' | cut -d: -f1 | sort | uniq -c | sort -nr",
+        "ss -s 会直接列出每个 IP 的连接数",
+        "对每个对端地址 ping 一次来统计连接数",
+        "netstat -i 能列出每个 IP 的连接数"
+      ],
+      "answer": 0
+    },
+    "c01-q15": {
+      "options": [
+        "tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32",
+        "cat /dev/random | head -1  —— 随机性更好而且不会阻塞",
+        "echo $RANDOM$RANDOM  —— 拼两下就够了 32 位",
+        "date +%s | md5sum  —— 跟着时钟变也算随机"
+      ],
+      "answer": 0
+    },
+    "c01-q16": {
+      "options": [
+        "awk '{print $1}' access.log | sort | uniq -c | sort -nr | head -5",
+        "sort access.log | uniq -c | head -5",
+        "awk '{print $1}' access.log | sort | head -5",
+        "awk '{print $7}' access.log | sort | uniq -c | sort -nr | head -5"
+      ],
+      "answer": 0
+    },
+    "c01-q18": {
+      "options": [
+        "CentOS 7 已于 2024-06-30 EOL，现在多选 Rocky / AlmaLinux 或 Ubuntu LTS",
+        "服务器首选 CentOS 8，它会长期支持到 2029 年",
+        "Fedora 是 RHEL 的稳定版，服务器应该优先选它",
+        "Debian 属于 RHEL 系，可以直接装 rpm 包"
+      ],
+      "answer": 0
+    },
+    "c01-q20": {
+      "options": [
+        "rpm 系用 rpm / yum（dnf），deb 系用 dpkg / apt；源码包要自己编译但可定制",
+        "rpm 包可以直接在 Ubuntu 上安装，无需转换",
+        "yum 只能安装本地 rpm 文件，不能联网",
+        "源码编译不依赖编译器和开发库，装上就能编"
+      ],
+      "answer": 0
+    },
+    "c01-q21": {
+      "options": [
+        "644：属主读写、其他人只读；755：属主读写执行、其他人读+执行；700：仅属主",
+        "644：所有人都能读写；755：所有人都能执行；700：所有人都只读",
+        "755 里第一个 7 表示的是属组的权限",
+        "目录只要给了 r 权限，用户就能 cd 进去"
+      ],
+      "answer": 0
+    },
+    "c01-q25": {
+      "options": [
+        "/proc 是伪文件系统、不占磁盘，cpuinfo / meminfo / net/tcp 都在这里",
+        "/proc 是磁盘上的真实目录，重启后内容依然保留",
+        "/proc 只提供 CPU 相关的信息",
+        "sysctl 改的内核参数存在 /proc 里，所以重启也不会丢"
+      ],
+      "answer": 0
+    },
+    "c01-q27": {
+      "options": [
+        "并行启动服务、支持依赖管理、统一 unit、journalctl 统一日志",
+        "systemd 是串行启动，所以比 sysvinit 慢但更稳定",
+        "systemd 只有 service 这一种 unit 类型",
+        "CentOS 6 默认使用的就是 systemd"
+      ],
+      "answer": 0
+    },
+    "c01-q28": {
+      "options": [
+        "journalctl -u nginx 看服务日志；--vacuum-size=200M 限制日志占用",
+        "journalctl -u nginx 只能看到内核日志",
+        "限制日志占用要用 --vacuumsize=200M（没有连字符）",
+        "journalctl 不支持按时间范围过滤"
+      ],
+      "answer": 0
+    },
+    "c01-q29": {
+      "options": [
+        "僵尸进程：子进程已退出、父进程没调 wait 回收，状态 Z，kill 它无效；孤儿进程：父进程先退出、被子进程被 init/systemd 收养，正常无害",
+        "僵尸进程会大量占用 CPU，所以发现后必须立刻 kill 掉",
+        "孤儿进程是已经死掉但没被回收的进程，会造成 PID 泄漏",
+        "kill -9 能彻底清除僵尸进程，清不掉就是权限不够"
+      ],
+      "answer": 0
+    },
+    "c01-q30": {
+      "options": [
+        "读内核环形缓冲区日志；硬件报错、OOM、文件系统错误优先看它",
+        "dmesg 是应用日志，需要应用自己往里写",
+        "dmesg 里的日志会永久保存，不会被覆盖",
+        "dmesg 主要用于查看网卡收发速率"
+      ],
+      "answer": 0
+    }
+  }
+}
+;</script>
+<script>/* 间隔重复 + 队列生成（纯函数，方便以后改规则重放历史）
+ * 状态不落库：所有状态都由「答题事件」重放算出。
+ */
+(function (global) {
+  'use strict';
+
+  const DAY = 24 * 60 * 60 * 1000;
+  const STEPS = [1, 3, 7, 14, 30];   // streak 1..5 对应的间隔（天）
+  const GRAD_STREAK = 3;             // 连续 3 次「会」毕业
+
+  function localDateKey(ts) {
+    const d = new Date(ts);
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${m}-${day}`;
+  }
+
+  /** 把某个题目的事件重放成当前状态 */
+  function deriveState(events, item) {
+    const list = (events || []).slice().sort((a, b) => a.ts - b.ts);
+    let streak = 0, ivl = 0, lapses = 0, lastTs = 0, verified = false, total = 0;
+    let lastKind = '';
+
+    for (const e of list) {
+      if (!e || !e.k) continue;
+      total += 1;
+      lastTs = e.ts;
+      lastKind = e.k;
+      if (e.k === 'again') {
+        streak = 0;
+        ivl = 0;
+        lapses += 1;
+      } else if (e.k === 'half') {
+        ivl = 1;               // 重新从 1 天起步，但不抹掉已有连击
+      } else if (e.k === 'good') {
+        streak += 1;
+        ivl = STEPS[Math.min(streak, STEPS.length) - 1];
+      } else if (e.k === 'verify') {
+        verified = true;
+      }
+      // skip 不改变任何状态
+    }
+
+    const seen = total > 0 || list.length > 0;
+    const needsVerify = !!item.verify;
+    const graduated = streak >= GRAD_STREAK && (!needsVerify || verified);
+
+    let due = 0;
+    if (!seen) due = 0;
+    else if (graduated) due = Infinity;
+    else due = lastTs + ivl * DAY;   // ivl=0 → 立刻到期
+
+    return { seen, streak, ivl, lapses, verified, graduated, due, lastTs, lastKind, total };
+  }
+
+  function statesFromEvents(events, items) {
+    const byItem = new Map();
+    for (const e of events) {
+      if (!byItem.has(e.item)) byItem.set(e.item, []);
+      byItem.get(e.item).push(e);
+    }
+    const out = {};
+    for (const it of items) {
+      out[it.id] = deriveState(byItem.get(it.id) || [], it);
+    }
+    return out;
+  }
+
+  /** 生成一次练习队列 */
+  function buildQueue(items, states, opts) {
+    opts = opts || {};
+    const now = opts.now || Date.now();
+    const newPerDay = opts.newPerDay != null ? opts.newPerDay : 5;
+    const maxSession = opts.maxPerSession || 12;
+    const mode = opts.mode || 'normal';     // normal | wrong | extra
+
+    const due = [];
+    const fresh = [];
+
+    for (const it of items) {
+      const st = states[it.id];
+      if (!st) continue;
+      if (st.graduated) continue;
+      if (!st.seen) {
+        fresh.push(it);
+      } else if (st.due <= now) {
+        due.push(it);
+      }
+    }
+
+    due.sort((a, b) => states[a.id].due - states[b.id].due);
+    fresh.sort((a, b) => (a.level - b.level) || a.id.localeCompare(b.id));
+
+    if (mode === 'wrong') {
+      // 只刷「做过但还没毕业」的题，不受新题额度和上限约束太多
+      const wrong = due.slice(0, maxSession);
+      return wrong;
+    }
+
+    const newLimit = mode === 'extra'
+      ? Math.min(newPerDay, fresh.length)
+      : Math.min(newPerDay, fresh.length, maxSession);
+
+    const picked = [];
+    const n = fresh.slice(0, newLimit);
+
+    // 交替穿插：到期题和新题混着来，避免一上来全是生题
+    let di = 0, ni = 0;
+    while (di < due.length || ni < n.length) {
+      if (di < due.length) picked.push(due[di++]);
+      if (ni < n.length && di % 2 === 0) picked.push(n[ni++]);
+      if (picked.length >= maxSession) break;
+    }
+    // 补满（如果交替没塞满）
+    while (picked.length < maxSession && ni < n.length) picked.push(n[ni++]);
+
+    return picked.slice(0, maxSession);
+  }
+
+  /** 连续学习天数 */
+  function streakDays(events, nowTs) {
+    if (!events.length) return 0;
+    const days = new Set(events.map((e) => localDateKey(e.ts)));
+    const today = new Date(nowTs || Date.now());
+    today.setHours(0, 0, 0, 0);
+    let cursor = today.getTime();
+    // 今天还没做，就从昨天开始算（不打断连击）
+    if (!days.has(localDateKey(cursor))) {
+      cursor -= DAY;
+      if (!days.has(localDateKey(cursor))) return 0;
+    }
+    let count = 0;
+    while (days.has(localDateKey(cursor))) {
+      count += 1;
+      cursor -= DAY;
+      if (count > 3650) break;
+    }
+    return count;
+  }
+
+  /** 最近 n 天每天的做题数 */
+  function dayCounts(events, n, nowTs) {
+    const out = [];
+    const today = new Date(nowTs || Date.now());
+    today.setHours(0, 0, 0, 0);
+    for (let i = n - 1; i >= 0; i--) {
+      const start = today.getTime() - i * DAY;
+      const end = start + DAY;
+      const c = events.filter((e) => e.ts >= start && e.ts < end && e.k !== 'verify').length;
+      out.push({ key: localDateKey(start), count: c, start });
+    }
+    return out;
+  }
+
+  /** 每章进度 */
+  function chapterProgress(items, states) {
+    const map = new Map();
+    for (const it of items) {
+      if (!map.has(it.ch)) map.set(it.ch, { ch: it.ch, total: 0, grad: 0, learned: 0, wrong: 0 });
+      const row = map.get(it.ch);
+      const st = states[it.id];
+      row.total += 1;
+      if (st.graduated) row.grad += 1;
+      if (st.seen) row.learned += 1;
+      if (st.seen && !st.graduated) row.wrong += 1;
+    }
+    return [...map.values()].sort((a, b) => a.ch - b.ch);
+  }
+
+  global.SRS = {
+    DAY, STEPS, GRAD_STREAK,
+    localDateKey, deriveState, statesFromEvents, buildQueue,
+    streakDays, dayCounts, chapterProgress
+  };
+})(window);
+</script>
+<script>/* 运维题库 · 前端逻辑 */
+(function () {
+  'use strict';
+
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => [...document.querySelectorAll(s)];
+
+  const KIND_LABEL = {
+    concept: '知识点',
+    scenario: '场景题',
+    code: '命令题',
+    acceptance: '验收大题'
+  };
+
+  const DEFAULT_SETTINGS = { newPerDay: 5, maxPerSession: 12, timerSec: 45, mode: 'blend', theme: 'dark' };
+
+  const state = {
+    items: [],
+    byId: {},
+    events: [],
+    states: {},
+    mc: {},
+    quiz: null,
+    settings: Object.assign({}, DEFAULT_SETTINGS),
+    session: null,
+    sync: 'idle',          // idle | on | off | busy
+    browseFilter: 'all'
+  };
+
+  /* ================= IndexedDB ================= */
+
+  const DB_NAME = 'quiz-db';
+  const DB_VER = 1;
+  const STORE = 'events';
+  let dbPromise = null;
+  let storageMode = 'idb';   // idb | ls（IndexedDB 不可用时降级到 localStorage）
+
+  function withTimeout(promise, ms, label) {
+    return new Promise((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error(label + ' timeout')), ms);
+      promise.then(
+        (v) => { clearTimeout(t); resolve(v); },
+        (e) => { clearTimeout(t); reject(e); }
+      );
+    });
+  }
+
+  function lsAll() {
+    try {
+      const raw = localStorage.getItem('quiz.events');
+      return raw ? JSON.parse(raw) : [];
+    } catch (_) { return []; }
+  }
+
+  function lsSave(list) {
+    try { localStorage.setItem('quiz.events', JSON.stringify(list)); } catch (_) {}
+  }
+
+  function openDB() {
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VER);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(STORE)) {
+          db.createObjectStore(STORE, { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return dbPromise;
+  }
+
+  async function dbAll() {
+    if (storageMode === 'ls') return lsAll();
+    try {
+      const list = await withTimeout((async () => {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE, 'readonly');
+          const req = tx.objectStore(STORE).getAll();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => reject(req.error);
+        });
+      })(), 2000, 'idb-read');
+      return list;
+    } catch (err) {
+      storageMode = 'ls';
+      return lsAll();
+    }
+  }
+
+  async function dbPut(ev) {
+    if (storageMode === 'ls') {
+      const all = lsAll().filter((e) => e.id !== ev.id);
+      all.push(ev);
+      lsSave(all);
+      return;
+    }
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).put(ev);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function dbPutMany(list) {
+    if (!list.length) return;
+    if (storageMode === 'ls') {
+      const byId = new Map(lsAll().map((e) => [e.id, e]));
+      for (const e of list) byId.set(e.id, e);
+      lsSave([...byId.values()]);
+      return;
+    }
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      const store = tx.objectStore(STORE);
+      for (const e of list) store.put(e);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function dbClear() {
+    lsSave([]);
+    if (storageMode === 'ls') return;
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  /* ================= 工具 ================= */
+
+  function uid() {
+    if (crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'e-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  }
+
+  function deviceName() {
+    return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'phone' : 'pc';
+  }
+
+  function loadSettings() {
+    try {
+      const raw = localStorage.getItem('quiz.settings');
+      if (raw) Object.assign(state.settings, JSON.parse(raw));
+    } catch (_) {}
+  }
+
+  function saveSettings() {
+    try { localStorage.setItem('quiz.settings', JSON.stringify(state.settings)); } catch (_) {}
+  }
+
+  /* ---------- 主题 ---------- */
+
+  function resolvedTheme() {
+    const t = state.settings.theme || 'dark';
+    if (t === 'system') {
+      const mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+      return mq && mq.matches ? 'dark' : 'light';
+    }
+    return t === 'light' ? 'light' : 'dark';
+  }
+
+  function applyTheme() {
+    const t = resolvedTheme();
+    document.documentElement.setAttribute('data-theme', t);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', t === 'dark' ? '#0f1115' : '#f4f5f9');
+    $$('#themeSeg .seg-btn').forEach((b) => {
+      b.classList.toggle('active', b.dataset.theme === (state.settings.theme || 'dark'));
+    });
+  }
+
+  function fmtDate(ts) {
+    const d = new Date(ts);
+    return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+
+  function toast(msg) {
+    const el = document.createElement('div');
+    el.textContent = msg;
+    el.style.cssText = [
+      'position:fixed', 'left:50%', 'bottom:96px', 'transform:translateX(-50%)',
+      'background:rgba(23,25,34,.92)', 'color:#fff', 'padding:10px 16px',
+      'border-radius:10px', 'font-size:13px', 'z-index:99', 'max-width:80vw',
+      'text-align:center', 'transition:opacity .3s', 'pointer-events:none'
+    ].join(';');
+    document.body.appendChild(el);
+    setTimeout(() => { el.style.opacity = '0'; }, 1600);
+    setTimeout(() => el.remove(), 2000);
+  }
+
+  function fetchWithTimeout(url, opts, ms) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms || 3000);
+    return fetch(url, Object.assign({}, opts, { signal: ctrl.signal }))
+      .finally(() => clearTimeout(timer));
+  }
+
+  /* ================= 数据刷新 ================= */
+
+  function recompute() {
+    state.states = SRS.statesFromEvents(state.events, state.items);
+  }
+
+  async function loadQuestions() {
+    // 单文件离线版会把题库直接内联进来
+    if (window.__QUIZ_EMBEDDED__ && Array.isArray(window.__QUIZ_EMBEDDED__.items)) {
+      applyBank(window.__QUIZ_EMBEDDED__);
+      return;
+    }
+    const res = await fetch('./data/questions.json', { cache: 'no-cache' });
+    if (!res.ok) throw new Error('题库加载失败 ' + res.status);
+    applyBank(await res.json());
+  }
+
+  function applyBank(data) {
+    state.items = data.items || [];
+    state.byId = {};
+    for (const it of state.items) state.byId[it.id] = it;
+    state.chapters = data.chapters || [];
+  }
+
+  async function loadChoices() {
+    if (window.__QUIZ_MC__ && window.__QUIZ_MC__.items) {
+      state.mc = window.__QUIZ_MC__.items;
+      return;
+    }
+    try {
+      const res = await fetch('./data/mc.json', { cache: 'no-cache' });
+      if (!res.ok) { state.mc = {}; return; }
+      const data = await res.json();
+      state.mc = data.items || {};
+    } catch (_) {
+      state.mc = {};
+    }
+  }
+
+  /* ================= 同步 ================= */
+
+  function setSync(v) {
+    state.sync = v;
+    const chip = $('#syncChip');
+    const label = $('#srvState');
+    if (v === 'on') {
+      chip.hidden = true;
+      if (label) label.textContent = '已连接';
+      if (label) label.style.color = '#16a34a';
+    } else if (v === 'off') {
+      chip.hidden = true;
+      if (label) label.textContent = '未连接（本机离线）';
+      if (label) label.style.color = '#6b7280';
+    } else if (v === 'busy') {
+      chip.hidden = false;
+      chip.textContent = '同步中';
+    }
+    const addr = $('#srvAddr');
+    if (addr) addr.textContent = apiBase() || (location.protocol.startsWith('http') ? location.origin : '未设置（本机离线）');
+  }
+
+  function apiBase() {
+    // 1) 设置里手工填的同步地址（离线单文件版用）
+    const s = (state.settings.server || '').trim();
+    if (s) return s.replace(/\/+$/, '');
+    // 2) 从本机服务打开的页面，同源即可
+    if (location.protocol.startsWith('http')) return '';
+    return '';
+  }
+
+  function syncAvailable() {
+    return !!apiBase() || location.protocol.startsWith('http');
+  }
+
+  async function trySync(manual) {
+    if (!syncAvailable()) {
+      setSync('off');
+      if (manual) toast('还没设同步地址：先在设置里填电脑的 http://IP:8765');
+      return;
+    }
+    const base = apiBase();
+    try {
+      setSync('busy');
+      const ping = await fetchWithTimeout(base + '/api/ping', { cache: 'no-store' }, 2500);
+      if (!ping.ok) throw new Error('ping failed');
+      await ping.json();
+
+      const r = await fetchWithTimeout(base + '/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ events: state.events })
+      }, 15000);
+      const data = await r.json();
+      if (!data.ok) throw new Error(data.error || 'sync failed');
+
+      const known = new Set(state.events.map((e) => e.id));
+      const add = (data.events || []).filter((e) => !known.has(e.id));
+      if (add.length) {
+        await dbPutMany(add);
+        state.events = state.events.concat(add);
+        recompute();
+        renderHome();
+        renderBrowse();
+      }
+      setSync('on');
+      if (manual) {
+        toast(add.length ? `同步完成，新增 ${add.length} 条记录` : '同步完成，已是最新');
+      }
+      refreshSettings();
+    } catch (err) {
+      setSync('off');
+      if (manual) toast('连不上服务，数据已存本地');
+    }
+  }
+
+  let syncTimer = null;
+  function scheduleSync() {
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => trySync(false), 4000);
+  }
+
+  /* ================= 记录事件 ================= */
+
+  async function record(itemId, kind, note) {
+    const ev = {
+      id: uid(),
+      item: itemId,
+      ts: Date.now(),
+      k: kind,
+      dev: deviceName(),
+      note: note || ''
+    };
+    await dbPut(ev);
+    state.events.push(ev);
+    recompute();
+    scheduleSync();
+    return ev;
+  }
+
+  /* ================= 视图切换 ================= */
+
+  function show(view) {
+    $$('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-' + view));
+    $$('.tab').forEach((t) => t.classList.toggle('active', t.dataset.view === view));
+    $('#tabbar').style.display = (view === 'quiz' || view === 'done') ? 'none' : 'flex';
+    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+  }
+
+  /* ================= 首页 ================= */
+
+  function queuePreview() {
+    return SRS.buildQueue(state.items, state.states, {
+      newPerDay: state.settings.newPerDay,
+      maxPerSession: state.settings.maxPerSession
+    });
+  }
+
+  function renderHome() {
+    const now = Date.now();
+    const total = state.items.length;
+    let grad = 0, learned = 0, wrong = 0, fresh = 0;
+    for (const it of state.items) {
+      const st = state.states[it.id];
+      if (st.graduated) grad += 1;
+      if (st.seen) learned += 1;
+      if (st.seen && !st.graduated) wrong += 1;
+      if (!st.seen) fresh += 1;
+    }
+    const dueCount = state.items.filter((it) => {
+      const st = state.states[it.id];
+      return st.seen && !st.graduated && st.due <= now;
+    }).length;
+
+    const q = queuePreview();
+    $('#queueCount').innerHTML = q.length + '<span>题</span>';
+    $('#queueBreakdown').textContent =
+      `到期 ${dueCount} 题 · 新题 ${Math.min(fresh, state.settings.newPerDay)} 题` +
+      (fresh > 0 && dueCount === 0 ? '（今天先开个头）' : '');
+
+    $('#statGrad').textContent = grad;
+    $('#statLearned').textContent = learned;
+    $('#statWrong').textContent = wrong;
+
+    const pct = total ? Math.round((grad / total) * 100) : 0;
+    $('#ringFg').style.strokeDashoffset = String(188.5 * (1 - pct / 100));
+    $('#ringLabel').textContent = pct + '%';
+
+    $('#streakNum').textContent = SRS.streakDays(state.events);
+    $('#todayLabel').textContent = q.length ? '今天的队列' : '今天没有待练的题';
+
+    const btn = $('#btnStart');
+    btn.disabled = q.length === 0;
+    btn.textContent = q.length === 0
+      ? (fresh === 0 && wrong === 0 ? '这一章已经全部毕业 🎉' : '今天已完成，明天再来')
+      : `开始今天 ${q.length} 题`;
+
+    renderChapters('#chapterList', false);
+  }
+
+  function renderChapters(sel, withStats) {
+    const rows = SRS.chapterProgress(state.items, state.states);
+    const chapName = (ch) => {
+      const c = (state.chapters || []).find((x) => x.id === ch);
+      return c ? c.title : '第 ' + ch + ' 章';
+    };
+    $(sel).innerHTML = rows.map((r) => {
+      const pct = r.total ? Math.round((r.grad / r.total) * 100) : 0;
+      return `<div class="chap-row">
+        <div class="chap-top">
+          <span class="chap-name">${chapName(r.ch)}</span>
+          <span class="chap-num">${r.grad}/${r.total} 毕业 · ${pct}%</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill warm" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('') || '<p class="hint">还没有内容</p>';
+  }
+
+  /* ================= 答题 ================= */
+
+  let timerHandle = null;
+
+  function startSession(mode) {
+    const q = SRS.buildQueue(state.items, state.states, {
+      newPerDay: state.settings.newPerDay,
+      maxPerSession: state.settings.maxPerSession,
+      mode: mode || 'normal'
+    });
+    if (!q.length) {
+      toast('没有要练的题了');
+      return;
+    }
+    state.session = {
+      queue: q.map((it) => it.id),
+      index: 0,
+      results: { good: 0, half: 0, again: 0 },
+      repeats: {},
+      mode: mode || 'normal',
+      started: Date.now()
+    };
+    show('quiz');
+    renderQuestion();
+  }
+
+  function currentItem() {
+    const s = state.session;
+    if (!s) return null;
+    return state.byId[s.queue[s.index]] || null;
+  }
+
+  function renderQuestion() {
+    const s = state.session;
+    const it = currentItem();
+    if (!it) return finishSession();
+
+    $('#qCounter').textContent = `${s.index + 1}/${s.queue.length}`;
+    $('#qProgress').style.width = ((s.index) / s.queue.length) * 100 + '%';
+
+    $('#qKind').textContent = KIND_LABEL[it.kind] || '题目';
+    $('#qLevel').textContent = '难度 ' + it.level;
+    $('#qTag').textContent = (it.tag || [])[0] || '';
+
+    $('#qText').textContent = it.q;
+
+    const box = $('#answerBox');
+    box.hidden = true;
+    $('#answerList').innerHTML = (it.a || []).map((x) => `<li>${escapeHtml(x)}</li>`).join('');
+
+    const follow = it.follow || [];
+    $('#followBox').hidden = follow.length === 0;
+    $('#followList').innerHTML = follow.map((x) => `<li>${escapeHtml(x)}</li>`).join('');
+
+    $('#gradeBar').hidden = true;
+    $('#btnReveal').hidden = false;
+    $('#btnReveal').disabled = false;
+    $('#btnNext').hidden = true;
+
+    state.quiz = { useMC: false, answered: false, mc: null, order: null };
+    setupChoices(it);
+
+    const st = state.states[it.id] || {};
+    const verifyLine = $('#verifyLine');
+    if (it.verify && !state.quiz.useMC) {
+      verifyLine.hidden = false;
+      $('#verifyCheck').checked = !!st.verified;
+    } else {
+      verifyLine.hidden = true;
+      $('#verifyCheck').checked = false;
+    }
+
+    startTimer(state.settings.timerSec, state.quiz.useMC ? function () {} : null);
+  }
+
+  /* ---------- 选择题 ---------- */
+
+  function hashStr(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function shuffleSeeded(list, seed) {
+    const a = list.slice();
+    let s = seed >>> 0;
+    for (let i = a.length - 1; i > 0; i--) {
+      s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+      const j = s % (i + 1);
+      const t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  function setupChoices(it) {
+    const box = $('#optionsBox');
+    const mc = state.mc && state.mc[it.id];
+    const mode = state.settings.mode || 'blend';
+    const eligible = !!mc && Array.isArray(mc.options) && mc.options.length >= 2;
+    const useMC = eligible && mode !== 'oral' && (mode === 'choice' || it.kind === 'concept');
+
+    state.quiz.useMC = useMC;
+    state.quiz.mc = eligible ? mc : null;
+
+    if (!useMC) {
+      box.hidden = true;
+      box.innerHTML = '';
+      $('#qHint').textContent = '先自己说出来，说完再点下面的按钮。说不全没关系，卡住的地方才是要记的。';
+      $('#btnReveal').textContent = '看答案';
+      $('#btnReveal').classList.remove('ghost');
+      return;
+    }
+
+    const order = shuffleSeeded(mc.options.map((_, i) => i), hashStr(it.id));
+    state.quiz.order = order;
+    box.innerHTML = order.map((orig, pos) =>
+      '<button type="button" class="opt" data-orig="' + orig + '">'
+      + '<span class="mark">' + 'ABCD'[pos] + '</span>'
+      + '<span class="otext">' + escapeHtml(mc.options[orig]) + '</span>'
+      + '</button>').join('');
+    box.hidden = false;
+    $('#qHint').textContent = '先在心里答一遍，再点选项。选完立刻给正确答案和完整要点。';
+    $('#btnReveal').textContent = '不会，直接看答案（记为不会）';
+    $('#btnReveal').classList.add('ghost');
+  }
+
+  function markChoiceResult(orig) {
+    const mc = state.quiz.mc;
+    $$('#optionsBox .opt').forEach((btn) => {
+      const o = Number(btn.dataset.orig);
+      btn.classList.add('done');
+      btn.disabled = true;
+      if (o === mc.answer) btn.classList.add('correct');
+      else if (o === orig) btn.classList.add('wrong');
+      else btn.classList.add('muted');
+    });
+    const box = $('#timerBox');
+    if (box) box.style.display = 'none';
+  }
+
+  function showNextButton() {
+    const s = state.session;
+    $('#answerBox').hidden = false;
+    $('#btnReveal').hidden = true;
+    $('#btnNext').hidden = false;
+    $('#btnNext').textContent = (s && s.index + 1 >= s.queue.length) ? '看结算' : '下一题';
+  }
+
+  async function chooseOption(orig) {
+    const q = state.quiz;
+    const it = currentItem();
+    if (!q || !q.useMC || q.answered || !it) return;
+
+    q.answered = true;
+    stopTimer();
+    markChoiceResult(orig);
+    showNextButton();
+
+    const correct = Number(orig) === Number(q.mc.answer);
+    if (it.verify && correct) {
+      $('#verifyLine').hidden = false;
+      $('#verifyCheck').checked = !!(state.states[it.id] || {}).verified;
+    }
+
+    await commit(correct ? 'good' : 'again', it);
+  }
+
+  async function abandonChoice() {
+    const q = state.quiz;
+    const it = currentItem();
+    if (!q || !q.useMC || q.answered || !it) return;
+
+    q.answered = true;
+    stopTimer();
+    markChoiceResult(-1);
+    showNextButton();
+    await commit('again', it);
+  }
+
+  async function commit(kind, it) {
+    const s = state.session;
+    s.results[kind] = (s.results[kind] || 0) + 1;
+    await record(it.id, kind);
+    if (kind === 'again') {
+      const times = s.repeats[it.id] || 0;
+      if (times < 2) {
+        s.repeats[it.id] = times + 1;
+        s.queue.push(it.id);
+      }
+    }
+  }
+
+  function advance() {
+    const s = state.session;
+    if (!s) return;
+    s.index += 1;
+    if (s.index >= s.queue.length) return finishSession();
+    renderQuestion();
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function startTimer(sec, onEnd) {
+    stopTimer();
+    const box = $('#timerBox');
+    const fill = $('#timerFill');
+    const text = $('#timerText');
+    box.classList.remove('done');
+
+    if (!sec || sec <= 0) {
+      box.style.display = 'none';
+      return;
+    }
+    box.style.display = 'flex';
+    let left = sec;
+    fill.style.transition = 'none';
+    fill.style.width = '100%';
+    text.textContent = left + 's';
+
+    timerHandle = setInterval(() => {
+      left -= 1;
+      const pct = Math.max(0, left / sec) * 100;
+      fill.style.width = pct + '%';
+      text.textContent = Math.max(0, left) + 's';
+      if (left <= 0) {
+        stopTimer();
+        box.classList.add('done');
+        text.textContent = '时间到';
+        if (typeof onEnd === 'function') onEnd();
+        else reveal(true);
+      }
+    }, 1000);
+  }
+
+  function stopTimer() {
+    if (timerHandle) {
+      clearInterval(timerHandle);
+      timerHandle = null;
+    }
+  }
+
+  function reveal(auto) {
+    stopTimer();
+    const box = $('#timerBox');
+    if (auto) {
+      box.classList.add('done');
+      $('#timerText').textContent = '时间到';
+    } else if (box.style.display !== 'none') {
+      // 自己主动点「看答案」时，计时条没有意义了，收起来免得误读成报错
+      box.style.display = 'none';
+    }
+    $('#answerBox').hidden = false;
+    $('#btnReveal').hidden = true;
+    $('#gradeBar').hidden = false;
+    $('#answerBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  async function grade(k) {
+    const it = currentItem();
+    if (!it) return;
+    stopTimer();
+    await commit(k, it);
+    advance();
+  }
+
+  function finishSession() {
+    stopTimer();
+    const s = state.session;
+    const done = s ? s.index : 0;
+    const r = s ? s.results : { good: 0, half: 0, again: 0 };
+
+    const colors = ['✓', '●', '○'];
+    $('#doneEmoji').textContent = r.again > r.good ? '💪' : '✓';
+    $('#doneTitle').textContent = done ? '这一轮跑完了' : '没有题目';
+    $('#doneSub').textContent = done
+      ? `做了 ${done} 题 · 用时 ${Math.max(1, Math.round((Date.now() - s.started) / 60000))} 分钟`
+      : '';
+
+    $('#doneGrid').innerHTML = `
+      <div><b>${r.good}</b>会</div>
+      <div><b>${r.half}</b>半对</div>
+      <div><b>${r.again}</b>不会</div>`;
+
+    state.session = null;
+    renderHome();
+    show('done');
+
+    const hasMore = queuePreview().length > 0;
+    $('#btnAgain').style.display = hasMore ? 'block' : 'none';
+  }
+
+  /* ================= 题库浏览 ================= */
+
+  function stateChip(st) {
+    if (!st.seen) return '<span class="state unseen">没做过</span>';
+    if (st.graduated) return '<span class="state grad">已毕业</span>';
+    if (st.streak > 0) return '<span class="state learn">在推进</span>';
+    return '<span class="state wrong">待攻克</span>';
+  }
+
+  function renderBrowse() {
+    const f = state.browseFilter;
+    const list = state.items.filter((it) => {
+      const st = state.states[it.id];
+      if (f === 'wrong') return st.seen && !st.graduated;
+      if (f === 'grad') return st.graduated;
+      if (f === 'unseen') return !st.seen;
+      return true;
+    });
+
+    $('#browseList').innerHTML = list.map((it) => {
+      const st = state.states[it.id];
+      return `<div class="brow-item" data-id="${it.id}">
+        <div class="brow-q">${escapeHtml(it.q)}</div>
+        <div class="brow-meta">
+          ${stateChip(st)}
+          <span>${KIND_LABEL[it.kind] || ''}</span>
+          <span>难度 ${it.level}</span>
+          ${it.verify ? '<span>需实机验证</span>' : ''}
+        </div>
+        <div class="brow-body"><ol>${(it.a || []).map((x) => `<li>${escapeHtml(x)}</li>`).join('')}</ol></div>
+      </div>`;
+    }).join('') || '<p class="hint">这个分类下没有题目。</p>';
+  }
+
+  /* ================= 统计 ================= */
+
+  function renderStats() {
+    const days = SRS.dayCounts(state.events, 14);
+    const max = Math.max(1, ...days.map((d) => d.count));
+    $('#dayBars').innerHTML = days.map((d) => {
+      const h = Math.round((d.count / max) * 100);
+      // 手机上 14 根柱子，标签只写「日」，完整日期放 title
+      const label = String(Number(d.key.slice(8)));
+      return `<div class="bar-col" title="${d.key}：${d.count} 题">
+        <div class="b ${d.count ? 'on' : ''}" style="height:${Math.max(3, h)}%"></div>
+        <div class="l">${label}</div>
+      </div>`;
+    }).join('');
+
+    const range = $('#rangeLabel');
+    if (range) {
+      const first = days[0].key.slice(5).replace('-', '/');
+      const last = days[days.length - 1].key.slice(5).replace('-', '/');
+      range.textContent = `${first} – ${last}`;
+    }
+
+    renderChapters('#chapterStats', true);
+
+    $('#evCount').textContent = state.events.length;
+    const sorted = state.events.slice().sort((a, b) => a.ts - b.ts);
+    $('#evFirst').textContent = sorted.length ? fmtDate(sorted[0].ts) : '—';
+    $('#evLast').textContent = sorted.length ? fmtDate(sorted[sorted.length - 1].ts) : '—';
+  }
+
+  /* ================= 设置 ================= */
+
+  async function loadPhoneUrl() {
+    const el = $('#phoneUrl');
+    if (!el) return;
+    const localHosts = ['localhost', '127.0.0.1', '0.0.0.0', ''];
+    const fromServer = location.protocol.startsWith('http');
+
+    // 已经用局域网地址打开（手机端），直接显示当前地址
+    if (fromServer && !localHosts.includes(location.hostname)) {
+      el.textContent = location.origin;
+      return;
+    }
+    if (!fromServer) {
+      el.textContent = '看电脑上控制台打印的地址';
+      return;
+    }
+    // 电脑端：问服务端要「手机该用的那个网卡地址」
+    try {
+      const r = await fetchWithTimeout('./api/info', { cache: 'no-store' }, 3000);
+      const d = await r.json();
+      el.textContent = d.primary || (d.urls && d.urls[0]) || '未检测到局域网地址';
+    } catch (_) {
+      el.textContent = '未检测到局域网地址';
+    }
+  }
+
+  function refreshSettings() {
+    $('#setNew').value = state.settings.newPerDay;
+    $('#setMax').value = state.settings.maxPerSession;
+    $('#setTimer').value = state.settings.timerSec;
+    const srv = $('#setServer');
+    if (srv) srv.value = state.settings.server || '';
+    $$('#modeSeg .seg-btn').forEach((b) => {
+      b.classList.toggle('active', b.dataset.mode === (state.settings.mode || 'blend'));
+    });
+    $$('#themeSeg .seg-btn').forEach((b) => {
+      b.classList.toggle('active', b.dataset.theme === (state.settings.theme || 'dark'));
+    });
+    setSync(state.sync === 'idle' ? 'off' : state.sync);
+  }
+
+  function bindSettings() {
+    const apply = (key, el, min, max) => {
+      el.addEventListener('change', () => {
+        let v = parseInt(el.value, 10);
+        if (!Number.isFinite(v)) v = DEFAULT_SETTINGS[key];
+        v = Math.max(min, Math.min(max, v));
+        el.value = v;
+        state.settings[key] = v;
+        saveSettings();
+        renderHome();
+      });
+    };
+    apply('newPerDay', $('#setNew'), 1, 20);
+    apply('maxPerSession', $('#setMax'), 3, 30);
+    apply('timerSec', $('#setTimer'), 0, 300);
+
+    const srvInput = $('#setServer');
+    if (srvInput) {
+      srvInput.addEventListener('change', () => {
+        state.settings.server = String(srvInput.value || '').trim();
+        saveSettings();
+        trySync(true);
+      });
+    }
+
+    $('#btnSyncNow').addEventListener('click', () => trySync(true));
+
+    const modeSeg = $('#modeSeg');
+    if (modeSeg) {
+      modeSeg.addEventListener('click', (e) => {
+        const b = e.target && e.target.closest ? e.target.closest('.seg-btn') : null;
+        if (!b || !b.dataset.mode) return;
+        state.settings.mode = b.dataset.mode;
+        saveSettings();
+        refreshSettings();
+        toast('答题形态已切换');
+      });
+    }
+
+    const themeSeg = $('#themeSeg');
+    if (themeSeg) {
+      themeSeg.addEventListener('click', (e) => {
+        const b = e.target && e.target.closest ? e.target.closest('.seg-btn') : null;
+        if (!b || !b.dataset.theme) return;
+        state.settings.theme = b.dataset.theme;
+        saveSettings();
+        applyTheme();
+      });
+    }
+
+    $('#btnExport').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), events: state.events }, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `quiz-events-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast('已导出');
+    });
+
+    $('#btnImport').addEventListener('click', () => $('#fileImport').click());
+    $('#fileImport').addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        const list = Array.isArray(data) ? data : (data.events || []);
+        const known = new Set(state.events.map((x) => x.id));
+        const add = list.filter((x) => x && x.id && !known.has(x.id));
+        await dbPutMany(add);
+        state.events = state.events.concat(add);
+        recompute();
+        renderHome(); renderBrowse(); renderStats();
+        toast(`导入 ${add.length} 条记录`);
+      } catch (err) {
+        toast('导入失败：文件格式不对');
+      }
+      e.target.value = '';
+    });
+
+    $('#btnReset').addEventListener('click', async () => {
+      if (!confirm('清空本机所有答题记录？这个操作不可撤销，建议先导出。')) return;
+      await dbClear();
+      state.events = [];
+      recompute();
+      renderHome(); renderBrowse(); renderStats();
+      toast('已清空');
+    });
+  }
+
+  /* ================= 事件绑定 ================= */
+
+  function bind() {
+    $$('.tab').forEach((t) => t.addEventListener('click', () => {
+      const v = t.dataset.view;
+      show(v);
+      if (v === 'browse') renderBrowse();
+      if (v === 'stats') renderStats();
+      if (v === 'settings') refreshSettings();
+      if (v === 'home') renderHome();
+    }));
+
+    $('#btnStart').addEventListener('click', () => startSession('normal'));
+    $('#btnQuit').addEventListener('click', () => {
+      if (state.session && state.session.index > 0) {
+        if (!confirm('这一轮还没跑完，确定退出？已做的题都已保存。')) return;
+      }
+      stopTimer();
+      state.session = null;
+      renderHome();
+      show('home');
+    });
+
+    $('#btnReveal').addEventListener('click', () => {
+      if (state.quiz && state.quiz.useMC && !state.quiz.answered) return abandonChoice();
+      reveal(false);
+    });
+
+    $('#btnNext').addEventListener('click', () => advance());
+
+    $('#optionsBox').addEventListener('click', (e) => {
+      const btn = e.target && e.target.closest ? e.target.closest('.opt') : null;
+      if (!btn || btn.disabled) return;
+      chooseOption(btn.dataset.orig);
+    });
+
+    $$('.grade').forEach((b) => b.addEventListener('click', () => grade(b.dataset.k)));
+
+    $('#verifyCheck').addEventListener('change', async (e) => {
+      const it = currentItem();
+      if (!it) return;
+      if (e.target.checked) {
+        await record(it.id, 'verify');
+        toast('已标记为实机验证');
+      } else {
+        toast('撤销需要在设置里清空该题记录（暂不支持单独撤销）');
+        const st = state.states[it.id];
+        e.target.checked = !!st.verified;
+      }
+    });
+
+    $('#btnDoneHome').addEventListener('click', () => { renderHome(); show('home'); });
+    $('#btnAgain').addEventListener('click', () => startSession('normal'));
+
+    $('#browseSeg').addEventListener('click', (e) => {
+      const b = e.target.closest('.seg-btn');
+      if (!b) return;
+      $$('#browseSeg .seg-btn').forEach((x) => x.classList.toggle('active', x === b));
+      state.browseFilter = b.dataset.filter;
+      renderBrowse();
+    });
+
+    $('#browseList').addEventListener('click', (e) => {
+      const card = e.target.closest('.brow-item');
+      if (!card) return;
+      card.classList.toggle('open');
+    });
+
+    bindSettings();
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') trySync(false);
+    });
+    window.addEventListener('online', () => trySync(false));
+  }
+
+  /* ================= 启动 ================= */
+
+  function bootError(err) {
+    const box = document.querySelector('#view-home');
+    const msg = String((err && (err.stack || err.message)) || err);
+    if (box) {
+      box.innerHTML = '<div class="card"><h2>页面启动失败</h2><p class="hint">'
+        + escapeHtml(msg) + '</p><p class="hint">把这段信息发给我就能定位。</p></div>';
+      box.classList.add('active');
+    }
+    const bar = document.querySelector('#tabbar');
+    if (bar) bar.style.display = 'flex';
+  }
+
+  function showBuild() {
+    const el = $('#footLine');
+    const meta = document.querySelector('meta[name="build"]');
+    if (!el || !meta) return;
+    el.textContent += ' · 构建 ' + meta.getAttribute('content');
+  }
+
+  async function init() {
+    loadSettings();
+    applyTheme();
+    bind();
+    showBuild();
+
+    try {
+      await loadQuestions();
+    } catch (err) {
+      bootError(err);
+      return;
+    }
+
+    await loadChoices();
+
+    // 先把界面顶上去（此时答题记录还没读出来），读完再刷一次，
+    // 避免某些浏览器 IndexedDB 卡住时首页一片空白、按钮点了没反应。
+    recompute();
+    renderHome();
+    const startView = ['browse', 'stats', 'settings'].indexOf((location.hash || '').slice(1)) >= 0
+      ? (location.hash || '').slice(1)
+      : 'home';
+    show(startView);
+    if (startView === 'browse') renderBrowse();
+    if (startView === 'stats') renderStats();
+    refreshSettings();
+    loadPhoneUrl();
+
+    try {
+      state.events = await dbAll();
+    } catch (_) {
+      state.events = [];
+    }
+
+    recompute();
+    renderHome();
+    renderBrowse();
+
+    // Service Worker 只在安全上下文可用；http://局域网IP 属于不安全上下文，注册会失败
+    if (location.protocol === 'https:' ||
+        location.hostname === 'localhost' ||
+        location.hostname === '127.0.0.1') {
+      if (navigator.serviceWorker && typeof navigator.serviceWorker.register === 'function') {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      }
+    }
+
+    trySync(false);
+
+    // 跟随系统时，系统切换深色要实时跟上
+    if (window.matchMedia) {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      if (mq && typeof mq.addEventListener === 'function') {
+        mq.addEventListener('change', () => {
+          if ((state.settings.theme || 'dark') === 'system') applyTheme();
+        });
+      }
+    }
+  }
+
+  window.addEventListener('error', (e) => {
+    if (!state.items.length) bootError(e.error || e.message);
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    if (!state.items.length) bootError(e.reason);
+  });
+
+  // 调试/测试用钩子，正常使用不会触发
+  if (window.__QUIZ_DEBUG__) {
+    window.QUIZ = {
+      state,
+      chooseOption,
+      abandonChoice,
+      advance,
+      renderQuestion,
+      startSession,
+      applyTheme
+    };
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+</body>
+</html>

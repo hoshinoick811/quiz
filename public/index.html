@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0f1115" />
+<title>运维题库</title>
+<link rel="manifest" href="./manifest.webmanifest" />
+<script>
+/* 先把主题定下来再加载样式，避免刷新时闪白 */
+(function () {
+  var dark = true;
+  try {
+    var s = JSON.parse(localStorage.getItem('quiz.settings') || '{}');
+    var t = s.theme || 'dark';
+    dark = t === 'dark' || (t === 'system' &&
+      window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  } catch (e) {}
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', dark ? '#0f1115' : '#f4f5f9');
+})();
+</script>
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <span>运维题库</span>
+      <span class="chip" id="syncChip" hidden>同步中</span>
+    </div>
+    <div class="streak" id="streakBadge" title="连续学习天数">
+      <span id="streakNum">0</span><span class="unit">天</span>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- 首页 -->
+    <section class="view" id="view-home">
+      <div class="hero card">
+        <div class="hero-top">
+          <div>
+            <div class="hero-label" id="todayLabel">今天的队列</div>
+            <div class="hero-big" id="queueCount">0<span>题</span></div>
+          </div>
+          <div class="ring" id="ring">
+            <svg viewBox="0 0 72 72" aria-hidden="true">
+              <circle class="ring-bg" cx="36" cy="36" r="30"></circle>
+              <circle class="ring-fg" id="ringFg" cx="36" cy="36" r="30"></circle>
+            </svg>
+            <div class="ring-label" id="ringLabel">0%</div>
+          </div>
+        </div>
+        <div class="hero-sub" id="queueBreakdown">到期 0 · 新题 0</div>
+        <button class="btn primary big" id="btnStart">开始今天 10 分钟</button>
+      </div>
+
+      <div class="grid3">
+        <div class="stat card"><div class="stat-num" id="statGrad">0</div><div class="stat-label">已毕业</div></div>
+        <div class="stat card"><div class="stat-num" id="statLearned">0</div><div class="stat-label">学过</div></div>
+        <div class="stat card"><div class="stat-num" id="statWrong">0</div><div class="stat-label">待攻克</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>章节进度</h2>
+        </div>
+        <div id="chapterList" class="chapter-list"></div>
+      </div>
+    </section>
+
+    <!-- 答题 -->
+    <section class="view" id="view-quiz">
+      <div class="qbar">
+        <button class="icon-btn" id="btnQuit" title="退出">✕</button>
+        <div class="progress-track"><div class="progress-fill" id="qProgress"></div></div>
+        <div class="qcounter" id="qCounter">1/10</div>
+      </div>
+
+      <div class="card qcard">
+        <div class="qmeta">
+          <span class="tag" id="qKind">知识点</span>
+          <span class="tag ghost" id="qLevel">难度 3</span>
+          <span class="tag ghost" id="qTag"></span>
+        </div>
+        <h2 class="qtext" id="qText"></h2>
+
+        <div class="timer" id="timerBox">
+          <div class="timer-fill" id="timerFill"></div>
+          <span id="timerText">45s</span>
+        </div>
+        <p class="hint" id="qHint">先自己说出来，说完再点下面的按钮。说不全没关系，卡住的地方才是要记的。</p>
+
+        <div class="options" id="optionsBox" hidden></div>
+
+        <button class="btn primary" id="btnReveal">看答案</button>
+
+        <div class="answer" id="answerBox" hidden>
+          <div class="answer-title">参考答案要点</div>
+          <ol id="answerList"></ol>
+          <div class="follow" id="followBox" hidden>
+            <div class="follow-title">可能的追问</div>
+            <ul id="followList"></ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="gradebar" id="gradeBar" hidden>
+        <button class="grade again" data-k="again"><b>不会</b><span>重来一遍</span></button>
+        <button class="grade half" data-k="half"><b>半对</b><span>明天再见</span></button>
+        <button class="grade good" data-k="good"><b>会</b><span>往后推</span></button>
+      </div>
+
+      <label class="verifyline" id="verifyLine" hidden>
+        <input type="checkbox" id="verifyCheck" />
+        <span>我已经在 VM / 终端里实际跑通过（代码题必须验证才毕业）</span>
+      </label>
+
+      <button class="btn primary" id="btnNext" hidden>下一题</button>
+    </section>
+
+    <!-- 结算 -->
+    <section class="view" id="view-done">
+      <div class="card done-card">
+        <div class="done-emoji" id="doneEmoji">✓</div>
+        <h2 id="doneTitle">今天的队列跑完了</h2>
+        <p class="done-sub" id="doneSub"></p>
+        <div class="done-grid" id="doneGrid"></div>
+        <button class="btn primary" id="btnDoneHome">回到首页</button>
+        <button class="btn ghost" id="btnAgain">再来一轮（错题）</button>
+      </div>
+    </section>
+
+    <!-- 题库 -->
+    <section class="view" id="view-browse">
+      <div class="seg" id="browseSeg">
+        <button class="seg-btn active" data-filter="all">全部</button>
+        <button class="seg-btn" data-filter="wrong">待攻克</button>
+        <button class="seg-btn" data-filter="grad">已毕业</button>
+        <button class="seg-btn" data-filter="unseen">没做过</button>
+      </div>
+      <div id="browseList" class="browse-list"></div>
+    </section>
+
+    <!-- 统计 -->
+    <section class="view" id="view-stats">
+      <div class="card">
+        <div class="card-head"><h2>最近 14 天</h2><span class="card-sub" id="rangeLabel"></span></div>
+        <div class="bars" id="dayBars"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>章节掌握度</h2></div>
+        <div id="chapterStats" class="chapter-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>数据</h2></div>
+        <div class="kv"><span>答题记录</span><b id="evCount">0</b></div>
+        <div class="kv"><span>最早记录</span><b id="evFirst">—</b></div>
+        <div class="kv"><span>最近记录</span><b id="evLast">—</b></div>
+      </div>
+    </section>
+
+    <!-- 设置 -->
+    <section class="view" id="view-settings">
+      <div class="card">
+        <div class="card-head"><h2>同步</h2></div>
+        <div class="kv"><span>服务地址</span><b id="srvAddr">—</b></div>
+        <div class="kv"><span>手机打开</span><b id="phoneUrl">—</b></div>
+        <div class="kv"><span>状态</span><b id="srvState">未连接</b></div>
+        <label class="row"><span>同步地址</span>
+          <input type="text" id="setServer" class="wide" placeholder="留空=同源" autocomplete="off" />
+        </label>
+        <button class="btn ghost" id="btnSyncNow">立即同步</button>
+        <p class="hint">手机上打开 http://电脑IP:8765 时留空即可（同源）。用离线单文件版时，填电脑的 http://IP:8765。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>外观</h2></div>
+        <div class="seg" id="themeSeg">
+          <button class="seg-btn" data-theme="light">浅色</button>
+          <button class="seg-btn active" data-theme="dark">深色</button>
+          <button class="seg-btn" data-theme="system">跟随系统</button>
+        </div>
+        <p class="hint">深色模式在晚上看着舒服一些；「跟随系统」会跟着你电脑/手机的浅深色设置走。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>答题形态</h2></div>
+        <div class="seg" id="modeSeg">
+          <button class="seg-btn active" data-mode="blend">混合</button>
+          <button class="seg-btn" data-mode="choice">全选择</button>
+          <button class="seg-btn" data-mode="oral">全口述</button>
+        </div>
+        <p class="hint">混合 = 知识点题出选择题、命令题和场景题仍口述；全选择 = 有选项的就出选择题；全口述 = 全部先自己说再对答案。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>节奏</h2></div>
+        <label class="row"><span>每天新题</span><input type="number" id="setNew" min="1" max="20" value="5" /></label>
+        <label class="row"><span>单次上限</span><input type="number" id="setMax" min="3" max="30" value="12" /></label>
+        <label class="row"><span>思考计时（秒）</span><input type="number" id="setTimer" min="0" max="300" value="45" /></label>
+        <p class="hint">计时归零只是提醒，不会判你错。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>数据</h2></div>
+        <button class="btn ghost" id="btnExport">导出记录（JSON）</button>
+        <button class="btn ghost" id="btnImport">导入记录</button>
+        <input type="file" id="fileImport" accept="application/json" hidden />
+        <button class="btn danger" id="btnReset">清空本机记录</button>
+        <p class="hint">换手机、清缓存前先导出。iOS 长时间不用网页可能清理本地数据。</p>
+      </div>
+
+      <p class="foot" id="footLine">运维题库 v1 · 内容整理自《运维面试宝典 V4.0》</p>
+    </section>
+
+  </main>
+
+  <nav class="tabbar" id="tabbar">
+    <button class="tab active" data-view="home">首页</button>
+    <button class="tab" data-view="browse">题库</button>
+    <button class="tab" data-view="stats">统计</button>
+    <button class="tab" data-view="settings">设置</button>
+  </nav>
+
+</div>
+<script src="./srs.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>
