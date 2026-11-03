@@ -287,6 +287,38 @@ body {
 .bar-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width .5s ease; }
 .bar-fill.warm { background: linear-gradient(90deg, var(--accent), #a78bfa); }
 
+/* 可点的章节行（首页） */
+.chap-row.clickable {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  color: var(--text);
+  padding: 10px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background .15s ease, transform .06s ease;
+}
+.chap-row.clickable:hover { background: var(--surface-2); }
+.chap-row.clickable:active { transform: scale(.995); }
+
+.chap-row .chev { margin-left: 6px; color: var(--muted); font-weight: 700; }
+
+.link-btn {
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 4px 7px;
+  border-radius: 8px;
+}
+.link-btn:hover { background: var(--accent-soft); }
+
 /* ---------- 答题 ---------- */
 .qbar {
   display: flex; align-items: center; gap: 12px;
@@ -446,6 +478,55 @@ body {
 
 /* ---------- 题库 ---------- */
 .browse-list { display: flex; flex-direction: column; gap: 8px; }
+
+/* 按章折叠的抽屉 */
+details.chap-drawer {
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+details.chap-drawer > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 14px 15px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+details.chap-drawer > summary::-webkit-details-marker { display: none; }
+details.chap-drawer > summary::after {
+  content: '▾';
+  margin-left: 2px;
+  font-size: 11px;
+  color: var(--muted);
+  transition: transform .15s ease;
+}
+details.chap-drawer[open] > summary::after { transform: rotate(180deg); }
+details.chap-drawer > summary:hover { background: var(--surface-2); }
+
+.chap-meta {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+.drawer-body .brow-item {
+  background: var(--surface-2);
+  box-shadow: none;
+}
 
 .brow-item {
   background: var(--surface); border-radius: 12px; padding: 13px 15px;

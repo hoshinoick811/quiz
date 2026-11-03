@@ -311,6 +311,38 @@ body {
 .bar-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width .5s ease; }
 .bar-fill.warm { background: linear-gradient(90deg, var(--accent), #a78bfa); }
 
+/* 可点的章节行（首页） */
+.chap-row.clickable {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  color: var(--text);
+  padding: 10px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background .15s ease, transform .06s ease;
+}
+.chap-row.clickable:hover { background: var(--surface-2); }
+.chap-row.clickable:active { transform: scale(.995); }
+
+.chap-row .chev { margin-left: 6px; color: var(--muted); font-weight: 700; }
+
+.link-btn {
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 4px 7px;
+  border-radius: 8px;
+}
+.link-btn:hover { background: var(--accent-soft); }
+
 /* ---------- 答题 ---------- */
 .qbar {
   display: flex; align-items: center; gap: 12px;
@@ -471,6 +503,55 @@ body {
 /* ---------- 题库 ---------- */
 .browse-list { display: flex; flex-direction: column; gap: 8px; }
 
+/* 按章折叠的抽屉 */
+details.chap-drawer {
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+details.chap-drawer > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 14px 15px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+details.chap-drawer > summary::-webkit-details-marker { display: none; }
+details.chap-drawer > summary::after {
+  content: '▾';
+  margin-left: 2px;
+  font-size: 11px;
+  color: var(--muted);
+  transition: transform .15s ease;
+}
+details.chap-drawer[open] > summary::after { transform: rotate(180deg); }
+details.chap-drawer > summary:hover { background: var(--surface-2); }
+
+.chap-meta {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+.drawer-body .brow-item {
+  background: var(--surface-2);
+  box-shadow: none;
+}
+
 .brow-item {
   background: var(--surface); border-radius: 12px; padding: 13px 15px;
   box-shadow: var(--shadow); cursor: pointer;
@@ -611,8 +692,10 @@ body {
       <div class="card">
         <div class="card-head">
           <h2>章节进度</h2>
+          <button class="link-btn" id="btnAllChapters" hidden>全部章节 ▾</button>
         </div>
         <div id="chapterList" class="chapter-list"></div>
+        <p class="hint" id="chapterHint">点章节只练这一章</p>
       </div>
     </section>
 
@@ -2550,12 +2633,14 @@ body {
     const now = opts.now || Date.now();
     const newPerDay = opts.newPerDay != null ? opts.newPerDay : 5;
     const maxSession = opts.maxPerSession || 12;
-    const mode = opts.mode || 'normal';     // normal | wrong | extra
+    const mode = opts.mode || 'normal';     // normal | wrong | extra | chapter
+    const onlyCh = opts.chapter != null ? opts.chapter : null;
 
     const due = [];
     const fresh = [];
 
     for (const it of items) {
+      if (onlyCh != null && it.ch !== onlyCh) continue;   // 只练指定章节
       const st = states[it.id];
       if (!st) continue;
       if (st.graduated) continue;
@@ -2575,9 +2660,12 @@ body {
       return wrong;
     }
 
-    const newLimit = mode === 'extra'
-      ? Math.min(newPerDay, fresh.length)
-      : Math.min(newPerDay, fresh.length, maxSession);
+    // chapter 模式：用户主动选了某一章，就不吃「每天新题数」的额度
+    const newLimit = mode === 'chapter'
+      ? Math.min(fresh.length, maxSession)
+      : mode === 'extra'
+        ? Math.min(newPerDay, fresh.length)
+        : Math.min(newPerDay, fresh.length, maxSession);
 
     const picked = [];
     const n = fresh.slice(0, newLimit);
@@ -2678,7 +2766,8 @@ body {
     settings: Object.assign({}, DEFAULT_SETTINGS),
     session: null,
     sync: 'idle',          // idle | on | off | busy
-    browseFilter: 'all'
+    browseFilter: 'all',
+    chaptersExpanded: false
   };
 
   /* ================= IndexedDB ================= */
@@ -3056,7 +3145,89 @@ body {
       ? (fresh === 0 && wrong === 0 ? '这一章已经全部毕业 🎉' : '今天已完成，明天再来')
       : `开始今天 ${q.length} 题`;
 
-    renderChapters('#chapterList', false);
+    renderHomeChapters();
+  }
+
+  /* ---------- 章节 ---------- */
+
+  /* 通用分组：现在按 ch 分，以后想按标签/难度分组换个 key 就行 */
+  function groupItems(items, key) {
+    const map = new Map();
+    for (const it of items) {
+      const k = it[key];
+      if (!map.has(k)) map.set(k, []);
+      map.get(k).push(it);
+    }
+    return [...map.entries()].sort((a, b) => {
+      if (typeof a[0] === 'number' && typeof b[0] === 'number') return a[0] - b[0];
+      return String(a[0]).localeCompare(String(b[0]));
+    });
+  }
+
+  function chapName(ch) {
+    const c = (state.chapters || []).find((x) => x.id === ch);
+    return c ? c.title : '第 ' + ch + ' 章';
+  }
+
+  /* 每章最近一次答题时间，用来把「最近在学的」排前面 */
+  function chapterLastActive() {
+    const map = {};
+    for (const e of state.events) {
+      const it = state.byId[e.item];
+      if (!it) continue;
+      if (!map[it.ch] || e.ts > map[it.ch]) map[it.ch] = e.ts;
+    }
+    return map;
+  }
+
+  /* 这一章还能练几道：到期 + 没做过，封顶单次上限 */
+  function chapterRemaining(ch) {
+    const now = Date.now();
+    let n = 0;
+    for (const it of state.items) {
+      if (it.ch !== ch) continue;
+      const st = state.states[it.id];
+      if (!st || st.graduated) continue;
+      if (!st.seen || st.due <= now) n += 1;
+    }
+    return Math.min(n, state.settings.maxPerSession || 12);
+  }
+
+  function renderHomeChapters() {
+    const rows = SRS.chapterProgress(state.items, state.states);
+    const last = chapterLastActive();
+    rows.sort((a, b) => {
+      const la = last[a.ch] || 0;
+      const lb = last[b.ch] || 0;
+      if (la !== lb) return lb - la;
+      return a.ch - b.ch;
+    });
+
+    const showAll = state.chaptersExpanded || rows.length <= 3;
+    const shown = showAll ? rows : rows.slice(0, 3);
+
+    $('#chapterList').innerHTML = shown.map((r) => {
+      const pct = r.total ? Math.round((r.grad / r.total) * 100) : 0;
+      const left = chapterRemaining(r.ch);
+      const tail = left ? '剩 ' + left + ' 题' : '已毕业';
+      return `<button type="button" class="chap-row clickable" data-ch="${r.ch}">
+        <div class="chap-top">
+          <span class="chap-name">${escapeHtml(chapName(r.ch))}</span>
+          <span class="chap-num">${r.grad}/${r.total} 毕业 · ${tail}<span class="chev">›</span></span>
+        </div>
+        <div class="bar-track"><div class="bar-fill warm" style="width:${pct}%"></div></div>
+      </button>`;
+    }).join('') || '<p class="hint">还没有内容</p>';
+
+    const btn = $('#btnAllChapters');
+    if (btn) {
+      btn.hidden = rows.length <= 3;
+      btn.textContent = state.chaptersExpanded ? '收起 ▴' : '全部章节 ▾';
+    }
+    const hint = $('#chapterHint');
+    if (hint) {
+      hint.textContent = `点章节只练这一章 · 共 ${rows.length} 章 ${state.items.length} 题`;
+    }
   }
 
   function renderChapters(sel, withStats) {
@@ -3081,6 +3252,19 @@ body {
 
   let timerHandle = null;
 
+  function beginSession(queueItems, mode) {
+    state.session = {
+      queue: queueItems.map((it) => it.id),
+      index: 0,
+      results: { good: 0, half: 0, again: 0 },
+      repeats: {},
+      mode: mode || 'normal',
+      started: Date.now()
+    };
+    show('quiz');
+    renderQuestion();
+  }
+
   function startSession(mode) {
     const q = SRS.buildQueue(state.items, state.states, {
       newPerDay: state.settings.newPerDay,
@@ -3091,16 +3275,21 @@ body {
       toast('没有要练的题了');
       return;
     }
-    state.session = {
-      queue: q.map((it) => it.id),
-      index: 0,
-      results: { good: 0, half: 0, again: 0 },
-      repeats: {},
-      mode: mode || 'normal',
-      started: Date.now()
-    };
-    show('quiz');
-    renderQuestion();
+    beginSession(q, mode || 'normal');
+  }
+
+  /* 只练一章：不占用每天的新题额度 */
+  function startChapter(ch) {
+    const q = SRS.buildQueue(state.items, state.states, {
+      chapter: ch,
+      maxPerSession: state.settings.maxPerSession,
+      mode: 'chapter'
+    });
+    if (!q.length) {
+      toast(chapName(ch) + ' 已经全部毕业了');
+      return;
+    }
+    beginSession(q, 'chapter');
   }
 
   function currentItem() {
@@ -3382,29 +3571,47 @@ body {
     return '<span class="state wrong">待攻克</span>';
   }
 
+  function browseMatch(it, f) {
+    const st = state.states[it.id];
+    if (f === 'wrong') return st.seen && !st.graduated;
+    if (f === 'grad') return st.graduated;
+    if (f === 'unseen') return !st.seen;
+    return true;
+  }
+
+  function browItemHtml(it) {
+    const st = state.states[it.id];
+    return `<div class="brow-item" data-id="${it.id}">
+      <div class="brow-q">${escapeHtml(it.q)}</div>
+      <div class="brow-meta">
+        ${stateChip(st)}
+        <span>${KIND_LABEL[it.kind] || ''}</span>
+        <span>难度 ${it.level}</span>
+        ${it.verify ? '<span>需实机验证</span>' : ''}
+      </div>
+      <div class="brow-body"><ol>${(it.a || []).map((x) => `<li>${escapeHtml(x)}</li>`).join('')}</ol></div>
+    </div>`;
+  }
+
+  /* 题库页：按章折叠，默认全收起，筛选作用在所有章上 */
   function renderBrowse() {
     const f = state.browseFilter;
-    const list = state.items.filter((it) => {
-      const st = state.states[it.id];
-      if (f === 'wrong') return st.seen && !st.graduated;
-      if (f === 'grad') return st.graduated;
-      if (f === 'unseen') return !st.seen;
-      return true;
-    });
+    const html = groupItems(state.items, 'ch').map(([ch, items]) => {
+      const list = items.filter((it) => browseMatch(it, f));
+      if (!list.length) return '';
+      const row = SRS.chapterProgress(items, state.states)[0] || {
+        total: items.length, grad: 0, wrong: 0
+      };
+      return `<details class="chap-drawer" data-ch="${ch}">
+        <summary>
+          <span class="chap-name">${escapeHtml(chapName(ch))}</span>
+          <span class="chap-meta">${row.grad}/${row.total} 毕业 · 待攻克 ${row.wrong}</span>
+        </summary>
+        <div class="drawer-body">${list.map(browItemHtml).join('')}</div>
+      </details>`;
+    }).join('');
 
-    $('#browseList').innerHTML = list.map((it) => {
-      const st = state.states[it.id];
-      return `<div class="brow-item" data-id="${it.id}">
-        <div class="brow-q">${escapeHtml(it.q)}</div>
-        <div class="brow-meta">
-          ${stateChip(st)}
-          <span>${KIND_LABEL[it.kind] || ''}</span>
-          <span>难度 ${it.level}</span>
-          ${it.verify ? '<span>需实机验证</span>' : ''}
-        </div>
-        <div class="brow-body"><ol>${(it.a || []).map((x) => `<li>${escapeHtml(x)}</li>`).join('')}</ol></div>
-      </div>`;
-    }).join('') || '<p class="hint">这个分类下没有题目。</p>';
+    $('#browseList').innerHTML = html || '<p class="hint">这个分类下没有题目。</p>';
   }
 
   /* ================= 统计 ================= */
@@ -3624,6 +3831,20 @@ body {
     $('#btnDoneHome').addEventListener('click', () => { renderHome(); show('home'); });
     $('#btnAgain').addEventListener('click', () => startSession('normal'));
 
+    $('#chapterList').addEventListener('click', (e) => {
+      const row = e.target && e.target.closest ? e.target.closest('[data-ch]') : null;
+      if (!row) return;
+      startChapter(Number(row.dataset.ch));
+    });
+
+    const allBtn = $('#btnAllChapters');
+    if (allBtn) {
+      allBtn.addEventListener('click', () => {
+        state.chaptersExpanded = !state.chaptersExpanded;
+        renderHomeChapters();
+      });
+    }
+
     $('#browseSeg').addEventListener('click', (e) => {
       const b = e.target.closest('.seg-btn');
       if (!b) return;
@@ -3743,6 +3964,9 @@ body {
       advance,
       renderQuestion,
       startSession,
+      startChapter,
+      renderHomeChapters,
+      renderBrowse,
       applyTheme
     };
   }

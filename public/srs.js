@@ -72,12 +72,14 @@
     const now = opts.now || Date.now();
     const newPerDay = opts.newPerDay != null ? opts.newPerDay : 5;
     const maxSession = opts.maxPerSession || 12;
-    const mode = opts.mode || 'normal';     // normal | wrong | extra
+    const mode = opts.mode || 'normal';     // normal | wrong | extra | chapter
+    const onlyCh = opts.chapter != null ? opts.chapter : null;
 
     const due = [];
     const fresh = [];
 
     for (const it of items) {
+      if (onlyCh != null && it.ch !== onlyCh) continue;   // 只练指定章节
       const st = states[it.id];
       if (!st) continue;
       if (st.graduated) continue;
@@ -97,9 +99,12 @@
       return wrong;
     }
 
-    const newLimit = mode === 'extra'
-      ? Math.min(newPerDay, fresh.length)
-      : Math.min(newPerDay, fresh.length, maxSession);
+    // chapter 模式：用户主动选了某一章，就不吃「每天新题数」的额度
+    const newLimit = mode === 'chapter'
+      ? Math.min(fresh.length, maxSession)
+      : mode === 'extra'
+        ? Math.min(newPerDay, fresh.length)
+        : Math.min(newPerDay, fresh.length, maxSession);
 
     const picked = [];
     const n = fresh.slice(0, newLimit);
