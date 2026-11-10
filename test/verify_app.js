@@ -7,8 +7,9 @@ const ROOT = path.resolve(__dirname, '..');
 const HTML = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
 const APP = fs.readFileSync(path.join(ROOT, 'public/app.js'), 'utf8');
 const SRS_CODE = fs.readFileSync(path.join(ROOT, 'public/srs.js'), 'utf8');
-const QUESTIONS = fs.readFileSync(path.join(ROOT, 'public/data/questions.json'), 'utf8');
-const MCJSON = fs.readFileSync(path.join(ROOT, 'public/data/mc.json'), 'utf8');
+const DATA = path.join(ROOT, 'public/data');
+// 题库按章拆分，fetch 桩直接把 URL 里的文件名映射到磁盘
+const readData = (name) => JSON.parse(fs.readFileSync(path.join(DATA, name), 'utf8'));
 
 const OFFLINE = process.argv.includes('--offline');
 let SRC = [];
@@ -117,11 +118,9 @@ const fetched = [];
 const fetchStub = async (url) => {
   fetched.push(url);
   if (OFFLINE) throw new Error('offline: 离线版不该联网');
-  if (url.includes('mc.json')) {
-    return { ok: true, status: 200, json: async () => JSON.parse(MCJSON) };
-  }
-  if (url.includes('questions.json')) {
-    return { ok: true, status: 200, json: async () => JSON.parse(QUESTIONS) };
+  const m = /data\/([A-Za-z0-9_.-]+\.json)/.exec(url);
+  if (m) {
+    return { ok: true, status: 200, json: async () => readData(m[1]) };
   }
   throw new Error('offline');   // api/ping 一律失败，走离线分支
 };
@@ -175,7 +174,9 @@ sandbox.window.matchMedia = () => ({ matches: false });
   if (OFFLINE) {
     ok('离线版没有发起任何网络请求', fetched.length === 0, JSON.stringify(fetched));
   } else {
-    ok('题库已加载', fetched.some((u) => u.includes('questions.json')), JSON.stringify(fetched));
+    ok('题库已加载',
+       fetched.some((u) => u.includes('index.json')) && fetched.some((u) => /ch\d+\.json/.test(u)),
+       JSON.stringify(fetched));
   }
   ok('首页被激活', byId['view-home']._cls.has('active'),
      'classList=' + [...byId['view-home']._cls].join(','));

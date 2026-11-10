@@ -185,8 +185,14 @@ function serveStatic(req, res, pathname) {
 
 /* 静态资源的版本号：取几个关键文件里最新的 mtime */
 function assetTag() {
-  const files = ['public/styles.css', 'public/app.js', 'public/srs.js',
-    'public/data/questions.json', 'public/data/mc.json'];
+  const files = ['public/styles.css', 'public/app.js', 'public/srs.js'];
+  // 题库按章拆分，加一章就多一个文件，直接扫目录，免得漏了新章
+  try {
+    const dir = path.join(ROOT, 'public', 'data');
+    for (const f of fs.readdirSync(dir)) {
+      if (f.endsWith('.json')) files.push('public/data/' + f);
+    }
+  } catch (_) {}
   let t = 0;
   for (const f of files) {
     try { t = Math.max(t, fs.statSync(path.join(ROOT, f)).mtimeMs); } catch (_) {}

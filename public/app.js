@@ -214,15 +214,27 @@
     state.states = SRS.statesFromEvents(state.events, state.items);
   }
 
-  async function loadQuestions() {
-    // 单文件离线版会把题库直接内联进来
-    if (window.__QUIZ_EMBEDDED__ && Array.isArray(window.__QUIZ_EMBEDDED__.items)) {
-      applyBank(window.__QUIZ_EMBEDDED__);
-      return;
-    }
-    const res = await fetch('./data/questions.json', { cache: 'no-cache' });
-    if (!res.ok) throw new Error('题库加载失败 ' + res.status);
-    applyBank(await res.json());
+  async function fetchJSON(url) {
+    const res = await fetch(url, { cache: 'no-cache' });
+    if (!res.ok) throw new Error('题库加载失败 ' + res.status + '  ' + url);
+    return res.json();
+  }
+
+  // 题库按章拆在 data/ 下：index.json 是清单，每章一个文件（题目 + 该章的选项）。
+  // 拆分是为了单个文件别大到没人愿意整份读完；加载方式对页面是无感的。
+  async function loadBank() {
+    // 单文件离线版把整份题库内联成 window.__QUIZ_BANK__
+    if (window.__QUIZ_BANK__) { applyBank(window.__QUIZ_BANK__); return; }
+
+    const idx = await fetchJSON('./data/index.json');
+    const chapters = idx.chapters || [];
+    if (!chapters.length) throw new Error('题库清单是空的');
+    const parts = await Promise.all(chapters.map((c) => fetchJSON('./data/' + c.file)));
+    applyBank({
+      chapters: chapters.map((c) => ({ id: c.id, title: c.title })),
+      items: [].concat(...parts.map((p) => p.items || [])),
+      mc: Object.assign({}, ...parts.map((p) => p.mc || {}))
+    });
   }
 
   function applyBank(data) {
@@ -230,21 +242,7 @@
     state.byId = {};
     for (const it of state.items) state.byId[it.id] = it;
     state.chapters = data.chapters || [];
-  }
-
-  async function loadChoices() {
-    if (window.__QUIZ_MC__ && window.__QUIZ_MC__.items) {
-      state.mc = window.__QUIZ_MC__.items;
-      return;
-    }
-    try {
-      const res = await fetch('./data/mc.json', { cache: 'no-cache' });
-      if (!res.ok) { state.mc = {}; return; }
-      const data = await res.json();
-      state.mc = data.items || {};
-    } catch (_) {
-      state.mc = {};
-    }
+    state.mc = data.mc || {};
   }
 
   /* ================= 同步 ================= */
@@ -1135,13 +1133,11 @@
     showBuild();
 
     try {
-      await loadQuestions();
+      await loadBank();
     } catch (err) {
       bootError(err);
       return;
     }
-
-    await loadChoices();
 
     // 先把界面顶上去（此时答题记录还没读出来），读完再刷一次，
     // 避免某些浏览器 IndexedDB 卡住时首页一片空白、按钮点了没反应。

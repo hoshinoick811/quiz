@@ -105,13 +105,26 @@ node build-offline.js
 
 带 `verify: true` 的命令题/代码题，必须勾「已在 VM 实机验证过」才算毕业。
 
+## 题库文件怎么放
+
+```
+public/data/
+  index.json   章节清单：id / title / 文件名
+  ch01.json    第 1 章：{ "items": [...], "mc": { 题目id: 选项 } }
+  ch02.json
+  ...
+```
+
+页面启动先读 `index.json`，再并行读各章文件合成一份。按章拆分是为了**单个文件别大到没人愿意整份读完**
+（一章一个文件就是给人和 agent 读的单位），加载方式对页面是无感的。离线单文件版会把它们重新合成一份内嵌进去。
+
 ## 加题目
 
-编辑 `public/data/questions.json`：
+改对应那章的 `public/data/chNN.json`，往 `items` 里加一条：
 
 ```json
 {
-  "id": "c02-q01", "ch": 2, "kind": "scenario", "level": 3, "src": "edited",
+  "id": "c02-q23", "ch": 2, "kind": "scenario", "level": 3, "src": "edited",
   "tag": ["网络"],
   "q": "题干",
   "a": ["要点一", "要点二"],
@@ -122,15 +135,18 @@ node build-offline.js
 
 - `kind`：`concept` 知识点 / `scenario` 场景题 / `code` 命令题 / `acceptance` 验收大题
 - `src`：`doc` 原文 / `edited` 原文整理 / `written` 补写（**补写的要人工审**）
-- 新章节还要在 `chapters` 里加一行
 
-选择题的选项单独放在 `public/data/mc.json`：
+选择题的选项写在同一个文件的 `mc` 里，按题目 id 关联：
 
 ```json
 { "c01-q06": { "options": ["A 说法", "B 说法", "C 说法", "D 说法"], "answer": 0 } }
 ```
 
 `answer` 是正确项下标，渲染时按题目 id 稳定打乱，所以不用分散正确答案。只有 `concept` / `code` 需要写选项，`scenario` / `acceptance` 不写（写了也不会用）。
+
+新增一章：放一个 `ch06.json` 进 `data/`，再在 `index.json` 的 `chapters` 里加一行
+`{ "id": 6, "title": "磁盘管理及存储篇", "file": "ch06.json" }`。题目 id 前缀用 `c06-`、`ch` 字段写 `6`，
+两处对不上 `node test/verify_quiz.js` 会直接报出来。
 
 改完题库记得重新 `node build-offline.js`。
 

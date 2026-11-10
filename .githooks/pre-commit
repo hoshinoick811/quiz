@@ -1,10 +1,12 @@
 #!/bin/sh
-# 提交前检查：单个文件超过 5000 token（按 字节 ÷ 4 算，约 20 KB）就拦下。
+# 提交前检查：单个文件太大就拦下（按 字节 ÷ 4 估算 token）
 # 为什么：文件一大，agent 每次要读的东西就变多，改东忘西。
 # 装法：git config core.hooksPath .githooks（克隆后跑一次）
 # 机器生成的、二进制、锁文件不查；已经超标的文件本次放行，只提醒。
 
-LIMIT=20000
+LIMIT=20000          # 代码 / 文档：约 5000 token
+DATA_LIMIT=100000    # 题库数据：约 25000 token（一章一个文件，整章读完是正常的）
+
 ROOT=$(git rev-parse --show-toplevel) || exit 0
 TMP=$(mktemp) || exit 0
 trap 'rm -f "$TMP"' EXIT
@@ -24,12 +26,21 @@ while IFS= read -r f; do
     public/quiz-offline.html) continue ;;
   esac
 
+  # 题库已经按章拆成 public/data/index.json + chNN.json，
+  # 「一章一个文件」就是给 agent 读的单位，所以这一类的上限放宽。
+  # 哪一章涨到这个上限，说明该把它的题目和选项再拆成两个文件了。
+  limit=$LIMIT
+  case "$f" in
+    public/data/*.json) limit=$DATA_LIMIT ;;
+  esac
+  limit_kb=$((limit / 1000))
+
   size=$(git cat-file -s ":$f" 2>/dev/null) || continue
-  if [ "$size" -le "$LIMIT" ]; then continue; fi
+  if [ "$size" -le "$limit" ]; then continue; fi
 
   kb=$((size / 1024))
   head_size=$(git cat-file -s "HEAD:$f" 2>/dev/null) || head_size=0
-  if [ "$head_size" -gt "$LIMIT" ]; then
+  if [ "$head_size" -gt "$limit" ]; then
     # 这次大扫除之前就已经超标的，先放行，否则连改个错别字都提交不了
     if [ "$size" -gt "$head_size" ]; then
       warned="$warned
@@ -40,22 +51,23 @@ while IFS= read -r f; do
     fi
   else
     blocked="$blocked
-    $f  ${kb} KB"
+    $f  ${kb} KB（上限 ${limit_kb} KB）"
   fi
 done < "$TMP"
 
 if [ -n "$warned" ]; then
-  echo "提示：以下文件本来就超过 5000 token，这次放行，但请别再往里加东西了："
+  echo "提示：以下文件本来就超过上限，这次放行，但请别再往里加东西了："
   printf '%s\n' "$warned"
   echo ""
 fi
 
 if [ -n "$blocked" ]; then
-  echo "提交被拦下：下面这些文件超过 5000 token（约 20 KB）："
+  echo "提交被拦下：下面这些文件超过大小上限："
   printf '%s\n' "$blocked"
   echo ""
   echo "文件一大，下次 agent 就得整份读进来。按功能拆成几个文件再提交"
   echo "（例如主逻辑 / 存储 / 视图分开），或把细节挪到它自己的文件里。"
+  echo "题库数据例外：一章一个文件，但如果单章超过 100 KB，请把题目和选项拆开。"
   echo "如果它是机器生成的，在 .githooks/pre-commit 的跳过列表里加一行。"
   echo ""
   echo "确实要硬提交：git commit --no-verify"

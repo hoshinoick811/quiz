@@ -17,8 +17,14 @@ const html = read('index.html');
 const css = read('styles.css');
 const srs = read('srs.js');
 const app = read('app.js');
-const bank = read(path.join('data', 'questions.json'));
-const mc = read(path.join('data', 'mc.json'));
+// 题库按章拆分（index.json + chNN.json），离线版把它们合成一份
+const idx = JSON.parse(read(path.join('data', 'index.json')));
+const parts = idx.chapters.map((c) => JSON.parse(read(path.join('data', c.file))));
+const bank = JSON.stringify({
+  chapters: idx.chapters.map((c) => ({ id: c.id, title: c.title })),
+  items: [].concat(...parts.map((p) => p.items || [])),
+  mc: Object.assign({}, ...parts.map((p) => p.mc || {}))
+});
 
 const banner = `
   <div class="card offline-note">
@@ -54,8 +60,7 @@ out = out.replace(
 
 // 3) 内联题库 + 逻辑
 const scripts = `
-<script>window.__QUIZ_EMBEDDED__ = ${safe(bank)};</script>
-<script>window.__QUIZ_MC__ = ${safe(mc)};</script>
+<script>window.__QUIZ_BANK__ = ${safe(bank)};</script>
 <script>${safe(srs)}</script>
 <script>${safe(app)}</script>
 `;

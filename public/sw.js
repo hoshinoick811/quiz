@@ -1,5 +1,5 @@
 /* 离线缓存：页面和题库都能离线打开，/api/ 永远走网络 */
-const CACHE = 'quiz-cache-v1';
+const CACHE = 'quiz-cache-v2';
 const CORE = [
   './',
   './index.html',
@@ -7,7 +7,7 @@ const CORE = [
   './app.js',
   './srs.js',
   './manifest.webmanifest',
-  './data/questions.json',
+  './data/index.json',   // 各章 chNN.json 由下面的 fetch 钩子在首次访问时缓存
   './icon.svg'
 ];
 

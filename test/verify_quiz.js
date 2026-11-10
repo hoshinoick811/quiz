@@ -11,8 +11,18 @@ const ok = (name, cond, extra) => {
 };
 
 /* ---------- 1. 题库 ---------- */
-console.log('\n[1] 题库 questions.json');
-const bank = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/data/questions.json'), 'utf8'));
+console.log('\n[1] 题库 public/data/（index.json + 每章一个文件）');
+const DATA = path.join(ROOT, 'public/data');
+const idx = JSON.parse(fs.readFileSync(path.join(DATA, 'index.json'), 'utf8'));
+const parts = idx.chapters.map((c) => {
+  const f = JSON.parse(fs.readFileSync(path.join(DATA, c.file), 'utf8'));
+  return { items: f.items || [], mc: f.mc || {} };
+});
+const bank = {
+  chapters: idx.chapters.map((c) => ({ id: c.id, title: c.title })),
+  items: [].concat(...parts.map((p) => p.items)),
+  mc: Object.assign({}, ...parts.map((p) => p.mc))
+};
 const KINDS = new Set(['concept', 'scenario', 'code', 'acceptance']);
 const SRC = new Set(['doc', 'edited', 'written']);
 const ids = new Set();
@@ -37,6 +47,19 @@ const chBad = Object.entries(CHAPTER_EXPECT)
 ok('题目总数 ' + bank.items.length,
    bank.items.length === Object.values(CHAPTER_EXPECT).reduce((a, b) => a + b, 0));
 ok('每章题量与预期一致', chBad.length === 0, chBad.join('; '));
+
+// 拆分成「一章一文件」之后，最容易出的事故就是把题放进了别的章的文件里
+const homeBad = [];
+idx.chapters.forEach((c, i) => {
+  for (const it of parts[i].items) {
+    if (it.ch !== c.id) homeBad.push(it.id + ' 属于第 ' + it.ch + ' 章，却放在 ' + c.file);
+  }
+  const want = 'c' + String(c.id).padStart(2, '0') + '-';
+  for (const id of Object.keys(parts[i].mc)) {
+    if (!id.startsWith(want)) homeBad.push(id + ' 的选项放在了 ' + c.file);
+  }
+});
+ok('每章文件的题目和选项都归属本章', homeBad.length === 0, homeBad.slice(0, 3).join('; '));
 ok('id 唯一且字段完整', bad.length === 0, bad.slice(0, 5).join('; '));
 const byKind = {};
 bank.items.forEach(i => byKind[i.kind] = (byKind[i.kind] || 0) + 1);
@@ -177,8 +200,8 @@ for (const [name, st] of [['全新', freshStates], ['整章毕业', gradStates],
 ok('章节行「剩 N 题」= 点进去实际出的题数', mismatch.length === 0, mismatch.join('; '));
 
 /* ---------- 6. 选择题选项 ---------- */
-console.log('\n[6] 选择题 mc.json');
-const mc = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/data/mc.json'), 'utf8')).items;
+console.log('\n[6] 选择题选项（跟着章节文件走）');
+const mc = bank.mc;
 const idsAll = new Set(bank.items.map(i => i.id));
 const mcBad = [];
 for (const [id, v] of Object.entries(mc)) {

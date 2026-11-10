@@ -17,7 +17,7 @@ node test/verify_app.js     # 前端集成（服务版），加 --offline 跑离
 ## 目录
 
 - `public/` 页面本体：`index.html` / `styles.css` / `app.js`（视图与交互）/ `srs.js`（纯函数：规则与队列）
-- `public/data/` 题库：`questions.json`（题目）+ `mc.json`（选择题选项，按 id 关联）
+- `public/data/` 题库：`index.json`（章节清单）+ 每章一个 `chNN.json`（该章题目 + 该章选项）
 - `public/quiz-offline.html` **生成物**，别手改
 - `server.js` 静态托管 + `/api/ping` `/api/info` `/api/sync`
 - `test/` 自测脚本，都是手写的断言，没有框架
@@ -30,13 +30,16 @@ node test/verify_app.js     # 前端集成（服务版），加 --offline 跑离
 4. **答题状态不落库。** 页面只存答题事件，当前连击/到期/毕业全部由 `srs.js` 的 `deriveState` 重放算出。想要"记住某个状态"时，请改重放规则，不要另存一份状态——两份数据一定会分叉。
 5. **「这题现在能不能练」只有两个出处**：`SRS.buildQueue`（出队列）和 `SRS.chapterProgress`（章节行的"剩 N 题"）。`test/verify_quiz.js` 断言两者相等。页面里不要再自己写一遍 `st.seen && st.due <= now` 的过滤。
 6. **事件是只追加的**，两端同步取并集，靠 `id` 去重。不存在"更新/删除事件"的操作，别加。
-7. **`scenario` / `acceptance` 不出选择题**，就算 `mc.json` 里写了也不会用——选项等于把答案提前给了。
-8. `server.js` 只用 Node 内置模块。**不要为了一个功能引入打包工具或框架**，手机用局域网 HTTP 打开，越简单越不容易坏。
+7. **`scenario` / `acceptance` 不出选择题**，就算章文件的 `mc` 里写了也不会用——选项等于把答案提前给了。
+8. **加题只改对应章的 `chNN.json`，新增章才去动 `index.json`。** 题放错文件、选项放错章，`test/verify_quiz.js` 会按 `id` 前缀和 `ch` 字段拦下来。
+9. `server.js` 只用 Node 内置模块。**不要为了一个功能引入打包工具或框架**，手机用局域网 HTTP 打开，越简单越不容易坏。
 
 ## 提交
 
 - 装了提交前钩子（`.githooks/pre-commit`，靠 `git config core.hooksPath .githooks` 生效）：
   单文件超过 5000 token（约 20 KB）会被拒。**照着报错把文件按功能拆开再提交**，不要用 `--no-verify` 绕。
+  题库数据是例外：`public/data/*.json` 上限 100 KB（一章一个文件，整章读完是正常的）；
+  哪一章涨到 100 KB，就把它的题目和选项拆成两个文件。
   钩子跳过二进制、锁文件和 `public/quiz-offline.html`（生成物）。
 - **写新函数、新规则之前，先搜项目里有没有现成的**——这个项目很小，规则重复写在两处比写错更麻烦。
 - 改完跑一遍 `test/` 那两条；改了 `public/` 记得先 `node build-offline.js`。

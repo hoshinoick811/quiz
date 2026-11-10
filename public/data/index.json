@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "chapters": [
+    {
+      "id": 1,
+      "title": "Linux 基础篇",
+      "file": "ch01.json"
+    },
+    {
+      "id": 2,
+      "title": "网络篇",
+      "file": "ch02.json"
+    },
+    {
+      "id": 3,
+      "title": "Linux 系统服务篇",
+      "file": "ch03.json"
+    },
+    {
+      "id": 4,
+      "title": "SHELL 编程篇",
+      "file": "ch04.json"
+    },
+    {
+      "id": 5,
+      "title": "系统架构篇",
+      "file": "ch05.json"
+    }
+  ]
+}
