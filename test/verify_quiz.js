@@ -27,7 +27,16 @@ for (const it of bank.items) {
   if (!it.ch) bad.push(it.id + ' 缺 ch');
   if (it.tag && !Array.isArray(it.tag)) bad.push(it.id + ' tag 非数组');
 }
-ok('题目总数 ' + bank.items.length, bank.items.length === 94);
+/* 每章题量：加章/加题时改这张表，比只盯一个总数更容易看出少的是哪一章 */
+const CHAPTER_EXPECT = { 1: 33, 2: 25, 3: 18, 4: 18, 5: 37 };
+const perCh = {};
+bank.items.forEach(i => perCh[i.ch] = (perCh[i.ch] || 0) + 1);
+const chBad = Object.entries(CHAPTER_EXPECT)
+  .filter(([ch, n]) => perCh[ch] !== n)
+  .map(([ch, n]) => '第' + ch + '章 ' + (perCh[ch] || 0) + '/' + n);
+ok('题目总数 ' + bank.items.length,
+   bank.items.length === Object.values(CHAPTER_EXPECT).reduce((a, b) => a + b, 0));
+ok('每章题量与预期一致', chBad.length === 0, chBad.join('; '));
 ok('id 唯一且字段完整', bad.length === 0, bad.slice(0, 5).join('; '));
 const byKind = {};
 bank.items.forEach(i => byKind[i.kind] = (byKind[i.kind] || 0) + 1);

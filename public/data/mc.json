@@ -649,6 +649,303 @@
         "[ ] 支持 =~ 正则匹配"
       ],
       "answer": 0
+    },
+    "c05-q01": {
+      "options": [
+        "先看 slowlog 和 status 页定位到具体慢脚本和进程池状态，再决定改代码、调 max_children 还是限流",
+        "直接把 pm.max_children 调到最大，进程越多处理越快",
+        "重启一下 php-fpm 就好，进程高重启必然能解决",
+        "PHP-FPM 是单线程的，CPU 高只能加机器，没有别的办法"
+      ],
+      "answer": 0
+    },
+    "c05-q02": {
+      "options": [
+        "按 server_name 匹配 Host 头把不同域名分流到各自的 upstream，并用 proxy_set_header Host $host 透传原始域名",
+        "一台 Nginx 只能代理一个虚拟主机，多个站点必须装多个 Nginx",
+        "只能靠 listen 不同端口来区分不同虚拟主机",
+        "所有站点都 proxy_pass 到同一个 upstream，让后端按来源 IP 自己区分"
+      ],
+      "answer": 0
+    },
+    "c05-q03": {
+      "options": [
+        "proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for 往后追加，再在后端或用 realip 模块取第一个地址",
+        "proxy_set_header X-Forwarded-For $remote_addr，每层覆盖写就行",
+        "只改 access_log 的格式就够了，$remote_addr 会自动变成真实 IP",
+        "把 server_name 改成访客 IP 就能记录真实地址"
+      ],
+      "answer": 0
+    },
+    "c05-q04": {
+      "options": [
+        "8005 是关停端口，8009 是 AJP 给 httpd 用，8080 是 HTTP 应用访问端口",
+        "8005 是 AJP 端口，8009 是 HTTP 端口，8080 是关停端口",
+        "三个都是 HTTP 端口，只是加密方式不同",
+        "8005 是管理后台，8009 是数据库，8080 才是应用"
+      ],
+      "answer": 0
+    },
+    "c05-q05": {
+      "options": [
+        "BIO 一个请求占一个线程且阻塞；NIO 用 Selector 多路复用；APR 调本地库，Tomcat 8.5 之后默认 NIO",
+        "BIO 是非阻塞的，NIO 才是阻塞的",
+        "APR 性能最好，所以生产上必须装 tomcat-native",
+        "三种模式只是名字不同，性能完全一样"
+      ],
+      "answer": 0
+    },
+    "c05-q06": {
+      "options": [
+        "先用 jstat 和压测确认瓶颈在 GC 还是线程，再对应调 JVM 参数和连接器参数",
+        "所有参数调到最大就对了，maxThreads 越大越好",
+        "Tomcat 调优就是调 JVM 堆，堆越大越快",
+        "只调 GC 算法就行，连接器和线程池都不用管"
+      ],
+      "answer": 0
+    },
+    "c05-q07": {
+      "options": [
+        "unix socket 同机通信不走 TCP 栈更快但只能本机，tcp socket 可跨机器，单机场景优先 unix socket",
+        "unix socket 只能跨服务器，tcp socket 只能本机",
+        "两种方式性能完全一样，随便选一个",
+        "php-fpm 只能用 tcp socket 连接，unix socket 早就废弃了"
+      ],
+      "answer": 0
+    },
+    "c05-q08": {
+      "options": [
+        "limit_req 限流、realip 还原真实 IP、upstream 定义后端池，这些都是官方自带模块",
+        "ngx_cache_purge 是官方核心模块，装上就有",
+        "rewrite 模块是第三方模块，要单独编译才能用",
+        "stub_status 是商业版才有的状态页功能"
+      ],
+      "answer": 0
+    },
+    "c05-q09": {
+      "options": [
+        "轮询、加权、ip_hash、least_conn、hash 都是官方自带，fair 是第三方模块，要单独装",
+        "fair 是官方默认的负载均衡算法",
+        "Nginx 只有 round-robin 和 ip_hash 两种模式",
+        "ip_hash 能保证后端机器增减时请求完全不漂移"
+      ],
+      "answer": 0
+    },
+    "c05-q10": {
+      "options": [
+        "Nginx 事件驱动、静态文件和反代强；Apache 模块和 rewrite 强，但更吃内存",
+        "Apache 2.4 一定是阻塞的，所以高并发下必挂",
+        "Nginx 支持 .htaccess，分布式配置管理更灵活",
+        "两者性能完全一致，只是配置语法不同"
+      ],
+      "answer": 0
+    },
+    "c05-q11": {
+      "options": [
+        "靠 VRRP 通告，BACKUP 收不到通告就抢占 VIP，默认切换是秒级（3～4 秒）而不是毫秒级",
+        "靠专用心跳线检测，切换在 100 毫秒以内",
+        "MASTER 挂了之后要人工执行脚本才能切换 VIP",
+        "通过修改 DNS 把域名指向备机来实现切换"
+      ],
+      "answer": 0
+    },
+    "c05-q12": {
+      "options": [
+        "LVS 四层抗压最强但做不了七层规则；Nginx 和 HAProxy 能按 URL、Header 分流",
+        "LVS 能做七层分流，Nginx 只能做四层转发",
+        "HAProxy 不能给 MySQL 做负载均衡",
+        "并发量小的时候用 LVS，并发量大了反而要用 Nginx"
+      ],
+      "answer": 0
+    },
+    "c05-q13": {
+      "options": [
+        "HTTPS 是 HTTP 外套一层 TLS，提供加密、完整性校验和身份认证，代价是握手延迟和证书运维",
+        "HTTPS 就是换了个端口，协议内容没变",
+        "HTTPS 能防止 SQL 注入和 XSS",
+        "HTTPS 必须花钱买证书，免费证书根本用不了"
+      ],
+      "answer": 0
+    },
+    "c05-q14": {
+      "options": [
+        "SQL 注入靠参数化查询、XSS 靠输出转义和 CSP、CSRF 靠 token 和 SameSite cookie",
+        "上了 WAF 就不用改代码了",
+        "SQL 注入只能靠前端表单校验拦住",
+        "XSS 是服务端的问题，前端转义没什么用"
+      ],
+      "answer": 0
+    },
+    "c05-q15": {
+      "options": [
+        "NAT 请求响应都过 Director；DR 改 MAC 由 RS 直接回包；TUN 用 IP 隧道可以跨机房",
+        "DR 模式响应也要经过 Director，所以它最慢",
+        "NAT 模式性能最好，生产上应该首选 NAT",
+        "三种模式都要求 RS 和 Director 在同一二层网络"
+      ],
+      "answer": 0
+    },
+    "c05-q16": {
+      "options": [
+        "Redis 有丰富的数据结构、持久化和主从集群；Memcached 只有 KV，但它是多线程的",
+        "Redis 比 Memcached 快一个数量级，两者不在一个量级",
+        "Redis 是单核的，最多只能用一个 CPU 核",
+        "Memcached 支持持久化，Redis 不支持"
+      ],
+      "answer": 0
+    },
+    "c05-q17": {
+      "options": [
+        "内存随机访问比磁盘快好几个数量级，磁盘只用来异步持久化、保证重启后能恢复；代价是内存贵所以要配 maxmemory",
+        "因为磁盘比内存贵，所以数据只能放内存",
+        "Redis 不支持磁盘，只能把数据放在内存里",
+        "为了省 CPU，内存操作的 CPU 开销比磁盘小"
+      ],
+      "answer": 0
+    },
+    "c05-q18": {
+      "options": [
+        "缓存、会话共享、分布式锁、排行榜、计数器、消息队列，都能用对应的数据结构实现",
+        "Redis 只能当缓存用，其他场景都不合适",
+        "Redis 适合存大文件和视频素材",
+        "Redis 适合做关系型事务，可以直接替代 MySQL"
+      ],
+      "answer": 0
+    },
+    "c05-q19": {
+      "options": [
+        "会丢。主从复制是异步的，主节点挂掉前没同步过去的写就丢了，Redis 偏 AP 不保证强一致",
+        "不会丢，Redis 主从是同步复制",
+        "只有集群模式会丢，主从模式一条都不会丢",
+        "只要开了 AOF 就绝对不会丢"
+      ],
+      "answer": 0
+    },
+    "c05-q20": {
+      "options": [
+        "string/hash/list/set/zset 分别对应缓存、对象、队列、去重、排行榜，另外还有 bitmap、HyperLogLog、GEO、Stream",
+        "Redis 只有 string 一种结构，其他都是 string 的封装",
+        "zset 是无序集合，不能按分数排序",
+        "list 适合做排行榜，zset 才是做队列的"
+      ],
+      "answer": 0
+    },
+    "c05-q21": {
+      "options": [
+        "单线程指的是命令处理；用多实例按核绑定、上 Cluster 分片、读写分离才能用满多核",
+        "Redis 天生支持多线程命令处理，会自动用满所有 CPU 核",
+        "开 io-threads 之后命令就能并行执行了",
+        "单线程意味着一个机器上只能跑一个 Redis 实例"
+      ],
+      "answer": 0
+    },
+    "c05-q22": {
+      "options": [
+        "先用 slowlog 和 bigkeys 定位，大部分性能问题来自用法（大 key、慢命令）而不是配置",
+        "性能问题基本都是内存不够，加内存就能解决",
+        "Redis 变慢一定是网络问题",
+        "开 AOF 一定会慢，所以生产环境干脆别开"
+      ],
+      "answer": 0
+    },
+    "c05-q23": {
+      "options": [
+        "生产上用副本集至少 3 节点（要多数派选举），数据量大了再上 mongos + config server + shard 的分片集群",
+        "MongoDB 用一主一从两台就够，不需要选举",
+        "分片只要加 mongos 就行，不需要 config server",
+        "副本集的从节点默认也能承担写操作"
+      ],
+      "answer": 0
+    },
+    "c05-q24": {
+      "options": [
+        "靠 DNS 调度或 Anycast 把请求导向最近的边缘节点，命中就返回、没命中回源",
+        "CDN 就是把源站复制一份到云上，用户还是直接访问源站",
+        "CDN 只能加速图片，其他内容都加速不了",
+        "CDN 节点缓存永久有效，内容更新不需要刷新"
+      ],
+      "answer": 0
+    },
+    "c05-q25": {
+      "options": [
+        "中间件是应用和系统之间提供通用能力的一层；JDK = JRE + 编译和诊断工具（javac、jstat、jmap 等）",
+        "JDK 就是 JVM，装哪个版本都一样",
+        "中间件就是数据库的另一个叫法",
+        "排查 GC 用 JRE 里自带的 jstat 就够了，不需要 JDK"
+      ],
+      "answer": 0
+    },
+    "c05-q26": {
+      "options": [
+        "Tomcat 生态和兼容性最好，是默认选择；Resin 性能有优势但资料少、用户基数小",
+        "Resin 是 Apache 基金会的标准 Servlet 容器",
+        "Tomcat 性能比 Resin 差很多，所以大公司都用 Resin",
+        "两者完全等价，选哪个都一样"
+      ],
+      "answer": 0
+    },
+    "c05-q27": {
+      "options": [
+        "Squid 是通用代理带磁盘缓存，Varnish 是专业的 HTTP 内存缓存，Nginx 的缓存只是附带能力",
+        "Nginx 只能缓存静态文件，动态响应缓存不了",
+        "Varnish 支持正向代理，Squid 只支持反向代理",
+        "三者性能完全一样，选哪个都行"
+      ],
+      "answer": 0
+    },
+    "c05-q28": {
+      "options": [
+        "proxy_cache_path 定义目录、大小和 keyzone，proxy_cache_valid 设过期，删了缓存文件要 reload 才能清掉内存索引",
+        "proxy_cache 一开就会自动清理，什么都不用管",
+        "缓存目录直接 rm -rf 就行，不用 reload",
+        "缓存 key 默认会自动带上所有请求参数和 cookie"
+      ],
+      "answer": 0
+    },
+    "c05-q29": {
+      "options": [
+        "雪崩是大量 key 集中过期、击穿是单个热点 key 过期、穿透是查一个根本不存在的数据",
+        "雪崩是单个 key 过期，击穿是大量 key 同时过期",
+        "穿透是缓存和数据库都有数据，但请求还是慢",
+        "三个说的是同一件事，只是叫法不同"
+      ],
+      "answer": 0
+    },
+    "c05-q30": {
+      "options": [
+        "slowlog-log-slower-than 单位是微秒（10000 = 10 毫秒），SLOWLOG GET 看详情，keys 这类命令要直接禁用",
+        "slowlog-log-slower-than 单位是毫秒，设 10 就是 10 毫秒",
+        "慢日志会记录命令排队时间和网络往返时间",
+        "生产上把阈值设成 0 记录所有命令，是推荐做法"
+      ],
+      "answer": 0
+    },
+    "c05-q31": {
+      "options": [
+        "删除会阻塞主线程、迁移和主从同步会卡顿；用 unlink 或分批删，根本办法是拆分 key",
+        "大 key 只影响内存占用，对性能没影响",
+        "大 key 直接用 del 删最快，推荐这么干",
+        "大 key 只会出现在 string 类型上"
+      ],
+      "answer": 0
+    },
+    "c05-q32": {
+      "options": [
+        "partition 是并行和水平扩展的基础，offset 是分区内单调递增的序号，顺序只保证单分区内有序",
+        "Kafka 能保证全局有序，不管分了多少个 partition",
+        "offset 是整个 topic 的全局序号",
+        "一个 partition 可以被同一个消费组里的多个消费者同时消费"
+      ],
+      "answer": 0
+    },
+    "c05-q34": {
+      "options": [
+        "静态资源由 Nginx 直接返回并配 expires，只有动态请求才 proxy_pass 给 Tomcat",
+        "动静分离就是把所有请求都转给 Tomcat，让它统一处理",
+        "静态资源应该放在 Tomcat 里，Nginx 只负责转发",
+        "配了 location 就自动完成分离了，不需要配 expires"
+      ],
+      "answer": 0
     }
   }
 }

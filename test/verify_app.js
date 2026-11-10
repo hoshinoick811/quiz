@@ -312,11 +312,15 @@ sandbox.window.matchMedia = () => ({ matches: false });
      drawerN === Q2.state.chapters.length, 'drawers=' + drawerN);
   ok('抽屉默认全部收起', !/<details[^>]*\sopen[=\s>]/.test(bHtml));
   ok('抽屉标题带进度信息', bHtml.includes('待攻克'));
+  const lastTitle = Q2.state.chapters[Q2.state.chapters.length - 1].title;
+  ok('题库页出现最新一章「' + lastTitle + '」', bHtml.includes(lastTitle),
+     Q2.state.chapters.map((c) => c.title).join(' / '));
 
-  // 模拟章节变多（3、4 章），验证「只露 3 行 + 全部章节」
-  [5, 6].forEach((ch) => {
+  // 模拟章节变多（再加 2 章），验证「只露 3 行 + 全部章节」
+  // 章号用 90/91：题库真实章号会一直往后长，用 5/6 早晚撞上已有的题
+  [90, 91].forEach((ch) => {
     Q2.state.items.push({
-      id: 'c0' + ch + '-q01', ch: ch, kind: 'concept', level: 1,
+      id: 'c' + ch + '-q01', ch: ch, kind: 'concept', level: 1,
       q: '测试题' + ch, a: ['x'], tag: ['t'], src: 'written', follow: []
     });
   });
@@ -329,7 +333,7 @@ sandbox.window.matchMedia = () => ({ matches: false });
   Q2.state.chaptersExpanded = true;
   Q2.renderHomeChapters();
   const rowsAll = (String(byId['chapterList'].innerHTML).match(/data-ch=/g) || []).length;
-  ok('展开后显示全部 6 章', rowsAll === 6, 'rows=' + rowsAll);
+  ok('展开后显示全部 ' + (chapN + 2) + ' 章', rowsAll === chapN + 2, 'rows=' + rowsAll);
 
   timers.forEach((h) => { clearTimeout(h); clearInterval(h); });
 

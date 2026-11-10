@@ -871,6 +871,10 @@ details.chap-drawer > summary:hover { background: var(--surface-2); }
     {
       "id": 4,
       "title": "SHELL 编程篇"
+    },
+    {
+      "id": 5,
+      "title": "系统架构篇"
     }
   ],
   "items": [
@@ -3003,6 +3007,938 @@ details.chap-drawer > summary:hover { background: var(--surface-2); }
       "follow": [
         "cron 里跑的脚本为什么常见「命令找不到」？怎么解决？"
       ]
+    },
+    {
+      "id": "c05-q01",
+      "ch": 5,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "PHP-FPM",
+        "性能"
+      ],
+      "q": "LNMP 环境里发现 PHP-FPM 进程 CPU / 负载很高，说出可能原因和排查解决思路",
+      "a": [
+        "先分清是 CPU 高还是内存高：top -o %CPU、pidstat -p <pid> 1 看是用户态还是内核态占用",
+        "抓慢请求：php-fpm 配 request_slowlog_timeout + slowlog，能直接定位到卡住的脚本和函数栈",
+        "看进程池状态：开启 pm.status_path，访问 http://127.0.0.1/status，重点看 active processes 和 listen queue，max children 打满就是在排队",
+        "常见原因一：代码死循环、大表全查、N+1 查询，属于开发问题，要开发一起看，不是调参能解决的",
+        "常见原因二：pm.max_children 设小了，进程反复重建，每次重建都要加载一遍框架，CPU 反而更高",
+        "常见原因三：opcache 没开或 opcache.validate_timestamps=1 每条请求都去 stat 文件",
+        "常见原因四：session 用文件存储时同一个会话的请求串行，接口慢会把进程全占满，改用 redis 存 session",
+        "常见原因五：后端依赖（MySQL 慢查询、Redis 超时、外部接口超时）把 worker 拖住，这时 PHP 的 CPU 其实不高，是先卡住再堆积",
+        "解决顺序：先定位到具体脚本和具体慢点，再决定改代码、加缓存、调 max_children、还是限流",
+        "pm.max_children 别乱填，按「可用内存 ÷ 单进程常驻内存」算，填大了只会 OOM 被杀"
+      ],
+      "follow": [
+        "怎么在不影响线上的前提下重载 php-fpm 配置？"
+      ]
+    },
+    {
+      "id": "c05-q02",
+      "ch": 5,
+      "kind": "code",
+      "level": 4,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "Nginx",
+        "反向代理"
+      ],
+      "q": "一台 Nginx 要反向代理后端多台机器上的不同虚拟主机，说出原理并写出配置",
+      "a": [
+        "原理：客户端只知道 Nginx 的地址，Nginx 按 server_name（HTTP 请求头里的 Host）或者 location 前缀分流，再把请求转发到对应的 upstream 池",
+        "第一层分流按域名：不同的 server 块写不同 server_name，各自 proxy_pass 到自己的 upstream",
+        "第二层分流按路径：同一个 server 下用不同的 location 前缀，落到不同的 upstream",
+        "示例：upstream app1_pool { server 192.168.1.10:80 weight=5; server 192.168.1.11:80 weight=5; }",
+        "示例：upstream app2_pool { server 192.168.1.20:80 weight=5; server 192.168.1.21:80 weight=5; }",
+        "示例：server { listen 80; server_name app1.abc.com; location / { proxy_pass http://app1_pool; proxy_set_header Host $host; } }",
+        "关键点：必须加 proxy_set_header Host $host，否则后端收到的是 IP，虚拟主机匹配不上，直接落到默认站点",
+        "关键点：proxy_pass http://app1_pool 后面不带 URI 时保留原始路径；写成 http://app1_pool/ 就会把 location 前缀替换掉，很多人栽在这",
+        "改完 nginx -t 校验再 nginx -s reload"
+      ],
+      "follow": [
+        "如果后端还要按 HTTPS 识别，需要额外转发哪个头？"
+      ]
+    },
+    {
+      "id": "c05-q03",
+      "ch": 5,
+      "kind": "code",
+      "level": 4,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "Nginx",
+        "日志"
+      ],
+      "q": "Nginx 做反向代理时，后端访问日志里全是代理的 IP，怎么让它记录真实访客 IP",
+      "a": [
+        "Nginx 侧加上：proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; 和 proxy_set_header X-Real-IP $remote_addr;",
+        "注意别写成 $remote_addr 直接赋值给 X-Forwarded-For——那样每一层都会覆盖，多级代理后前面的真实 IP 就丢了，$proxy_add_x_forwarded_for 是在已有的 XFF 后面追加",
+        "Tomcat 侧认这个头：在 server.xml 的 Host 里加 RemoteIpValve，internalProxies 写自己代理的 IP 段",
+        "PHP / 应用侧从 $_SERVER['HTTP_X_FORWARDED_FOR'] 取第一个地址，或者用 real_ip 模块",
+        "Nginx 自己的日志格式也要带上：log_format main '$remote_addr \"$request\" \"$http_x_forwarded_for\"';",
+        "安全提醒：XFF 是请求头，客户端可以随便伪造。该信谁要配 ngx_http_realip_module 的 set_real_ip_from + real_ip_header，只信任自己的代理地址",
+        "不配 set_real_ip_from 时，日志里的 XFF 只能当前端代理给的，不能当审计依据"
+      ],
+      "follow": [
+        "怎么判断日志里某个 IP 是真的访客还是伪造的？"
+      ]
+    },
+    {
+      "id": "c05-q04",
+      "ch": 5,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "Tomcat",
+        "连接器"
+      ],
+      "q": "Tomcat 的 8005、8009、8080 三个端口分别是什么，Tomcat 的连接器又是什么",
+      "a": [
+        "8005：shutdown 端口，收到 SHUTDOWN 字符串就优雅关闭，只监听 127.0.0.1 才安全；可以用 port=\"-1\" 关掉，否则被扫到就能远程停服务",
+        "8009：AJP 协议端口，给 Apache httpd 通过 mod_jk / mod_proxy_ajp 用，二进制协议比 HTTP 省，前端是 httpd 时才需要；不用就注释掉（Ghostcat 漏洞 CVE-2020-1938 就是 AJP）",
+        "8080：HTTP 连接器端口，应用对外访问的口，8443 默认给 HTTPS",
+        "连接器（Connector）负责收请求、解析成 HttpServletRequest 交给 Engine，再把响应写回去，它属于 Tomcat 的 Service 组件",
+        "所以连接器就是 HTTP 和 AJP 这两类，配置在 server.xml 的 Connector 标签，protocol、maxThreads、connectionTimeout 都在这里改",
+        "结构关系：Server → Service → Connector + Engine，一个 Service 可以挂多个 Connector"
+      ],
+      "follow": [
+        "生产上为什么经常把 8005 改成 -1？"
+      ]
+    },
+    {
+      "id": "c05-q05",
+      "ch": 5,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "Tomcat",
+        "IO 模型"
+      ],
+      "q": "Tomcat 的 BIO、NIO、APR 三种工作模式原理有什么区别",
+      "a": [
+        "BIO：阻塞 I/O，一个请求占一个线程，线程数就是并发上限，线程一多上下文切换开销大；Tomcat 8.5 起已废弃",
+        "NIO：基于 java.nio 的 Selector 多路复用，少量线程处理大量连接，非阻塞读写，Tomcat 8.5 之后的默认",
+        "APR：Apache Portable Runtime，通过 JNI 调本地库（tomcat-native + openssl），能用上 epoll 和 OpenSSL，性能最好但要装原生库，运维成本高",
+        "选型：绝大多数场景用默认 NIO（Http11NioProtocol）就够了；APR 现在很少见，别为了性能指标去装，坑多",
+        "连接数不是只由模式决定：真正卡并发的是 maxThreads 和 acceptCount，NIO 只是让线程不被连接数绑死",
+        "压测时看 catalina 线程池的 busyThreads / currentThreadCount，线程打满就要调 maxThreads 或者优化单请求耗时"
+      ],
+      "follow": [
+        "AJP 为什么在 Nginx 场景下不用？"
+      ]
+    },
+    {
+      "id": "c05-q06",
+      "ch": 5,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "Tomcat",
+        "调优"
+      ],
+      "q": "简述 Tomcat 调优的大概思路",
+      "a": [
+        "连接器层：protocol 用 NIO，maxThreads 默认 200，按压测结果调；acceptCount 是队列长度，maxConnections 控制最大连接数，connectionTimeout 别太长",
+        "JVM 层：-Xms 和 -Xmx 设成一样大，避免堆反复伸缩；新生代别太小；GC 选 G1 或 ZGC，开 GC 日志；加 -XX:+HeapDumpOnOutOfMemoryError 留现场",
+        "应用层：关掉不需要的自动重载、disable 没用的 Valve、JSP 别开 development 模式、开压缩",
+        "架构层：Nginx 做前置和动静分离，session 放 redis 做共享，静态资源走 CDN，别都压在 Tomcat 上",
+        "数据库层：连接池大小要和 Tomcat 线程数匹配，别让 Tomcat 线程比 DB 连接池还多，否则请求全卡在等连接",
+        "观察先行：先用 jstat / jmap + GC 日志确认是不是 GC 问题，再用压测确认是不是线程问题，别上来就改参数",
+        "调优顺序：先确认瓶颈在哪一层（CPU / 内存 / 磁盘 / 网络 / 锁），参数只对真瓶颈有用"
+      ],
+      "follow": [
+        "Tomcat 线程数调大了一定更好吗？"
+      ]
+    },
+    {
+      "id": "c05-q07",
+      "ch": 5,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "Nginx",
+        "PHP-FPM"
+      ],
+      "q": "Nginx 和 PHP-FPM 的两种连接方式分别是什么，各有什么优缺点",
+      "a": [
+        "两种：TCP socket 和 Unix socket，配置分别是 fastcgi_pass 127.0.0.1:9000; 和 fastcgi_pass unix:/dev/shm/php-fpm.sock;",
+        "Unix socket：同一台机器上进程间通信，不经过 TCP 协议栈，少一次封装解包，延迟更低、吞吐更高，一般能快 10% 上下",
+        "Unix socket 的坑：sock 文件所在目录必须让 nginx 用户有写权限；/dev/shm 是内存盘，重启机器就没了，php-fpm 要先起来；并发极高时受 backlog 限制",
+        "TCP socket：走本地回环，更通用，nginx 和 php-fpm 可以不在同一台机器，容器化、单独扩容时只能用这个",
+        "TCP 的坑：多走一遍内核协议栈，有端口占用和 TIME_WAIT；别监听 0.0.0.0，没防火墙就等于是对外开放的 FastCGI 口",
+        "选型：单机 PHP 应用用 unix socket；php-fpm 单独部署、或者跑在容器里用 tcp",
+        "现在很多新项目走更彻底的路子——php-fpm 和 nginx 分开部署，前端 Nginx 只做代理，后端用 FPM 集群"
+      ],
+      "follow": [
+        "php-fpm 的 listen 和 nginx 的 fastcgi_pass 对不上，报什么错？"
+      ]
+    },
+    {
+      "id": "c05-q08",
+      "ch": 5,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "Nginx",
+        "模块"
+      ],
+      "q": "写出你常用的 Nginx 模块及作用",
+      "a": [
+        "ngx_http_rewrite_module：rewrite 规则、return，做跳转和伪静态",
+        "ngx_http_proxy_module：反向代理的核心，proxy_pass / proxy_set_header 都在这里",
+        "ngx_http_upstream_module：定义后端服务器池、权重、健康检查参数",
+        "ngx_http_limit_req_module 和 limit_conn_module：按 IP 限流、限并发，抗刷和防雪崩的第一道闸",
+        "ngx_http_realip_module：把 X-Forwarded-For 还原成真实 IP，日志和限流都依赖它",
+        "ngx_http_gzip_module：响应压缩，静态文本资源省带宽",
+        "ngx_http_ssl_module：HTTPS，证书、TLS 版本、session 复用",
+        "ngx_http_stub_status_module：暴露 active connections / requests / reading-writting 状态页，做监控用",
+        "ngx_http_auth_basic_module 和 ngx_http_headers_module：简单认证、加 CORS 和缓存响应头",
+        "ngx_stream_core_module：四层转发（TCP/UDP），做 MySQL、Redis 的代理",
+        "ngx_cache_purge 是第三方模块，不是官方自带，装之前先 nginx -V 看编译参数"
+      ],
+      "follow": [
+        "怎么确认一个模块当前编译进 Nginx 了？"
+      ]
+    },
+    {
+      "id": "c05-q09",
+      "ch": 5,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "Nginx",
+        "负载均衡"
+      ],
+      "q": "Nginx 支持哪几种负载均衡模式，分别适合什么场景",
+      "a": [
+        "round-robin 轮询：默认，请求依次分发，要求后端机器性能接近，挂了会被自动剔除",
+        "weight 加权轮询：后端性能不一样时按权重分配，权重高的多分",
+        "ip_hash：按客户端 IP 的哈希固定到某台机器，能解决 session 问题，缺点是后端增减机器会大面积漂移、NAT 出口同 IP 的流量会全压一台",
+        "least_conn：把请求给当前连接数最少的机器，长连接和请求耗时差异大时比轮询更均衡",
+        "hash $key：按任意变量（比如 $request_uri）做一致性哈希，缓存服务器场景命中率高",
+        "fair 是按响应时间分配，这个不是官方模块，要装三方模块，别当成标答说",
+        "健康检查：官方版只有被动的 max_fails / fail_timeout，探测到失败才剔除；主动健康检查要商业版或第三方模块",
+        "backup 标记备用机，down 标记下线，keepalive 可以让 upstream 保持长连接，减少握手开销"
+      ],
+      "follow": [
+        "ip_hash 和 session 共享，生产上你选哪个？"
+      ]
+    },
+    {
+      "id": "c05-q10",
+      "ch": 5,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "Nginx",
+        "Apache"
+      ],
+      "q": "简述 Apache 和 Nginx 的优缺点",
+      "a": [
+        "Nginx 优点：事件驱动、异步非阻塞，少量进程扛高并发，内存占用小；静态文件和反向代理性能强；配置简洁；扩展模块化",
+        "Nginx 缺点：rewrite 功能比 Apache 弱；动态模块要重新编译（老版本）；不支持 .htaccess 那种目录级配置；出了问题调试手段少，日志没 Apache 细",
+        "Apache 优点：模块极其丰富，.htaccess 支持分布式配置，rewrite 强大，文档和社区老牌，稳定性经过长期验证；mod_php 部署 PHP 简单",
+        "Apache 缺点：进程/线程模型吃内存，高并发下不如 Nginx；配置项多，容易写错",
+        "要纠正一个常见说法：Apache 2.4 的 event MPM 也是异步非阻塞的，说「Apache 一定是阻塞的」已经过时了，差距在静态文件和反向代理的实现效率，不在「完全不异步」",
+        "实践：Nginx 放前面做静态 + 反代，Apache 放后面跑需要 .htaccess 或特定模块的应用，两者不是非此即彼"
+      ],
+      "follow": [
+        "为什么很多公司用 Nginx + Apache 两层，而不是只用一种？"
+      ]
+    },
+    {
+      "id": "c05-q11",
+      "ch": 5,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "Keepalived",
+        "高可用"
+      ],
+      "q": "简述 Keepalived 的工作原理，以及它如何实现高可用",
+      "a": [
+        "核心是 VRRP 协议：多台机器组成一个虚拟路由器，对外共用一个 VIP，客户端只认这个 VIP",
+        "角色：MASTER 周期性（默认 1 秒）向组播地址 224.0.0.18 发 VRRP 通告，BACKUP 只收不发",
+        "切换：BACKUP 在 master_down_interval（约 3 倍通告间隔 + 偏移）内收不到通告，就认为 MASTER 挂了，优先级最高的 BACKUP 接管 VIP，并免费 ARP 通知交换机更新转发表",
+        "要纠正原文一个说法：切换不是「小于 1 秒」，默认配置下通常是 3～4 秒级；想更快就调小 advert_int，但网络抖动会误切",
+        "抢占：preempt 默认开启，原 MASTER 恢复后会抢回 VIP；不想来回切就配 nopreempt",
+        "keepalived 还有一个常被忽略的功能是健康检查：vrrp_script 定时跑脚本（比如 curl 本地 nginx），失败就降优先级，让 VIP 漂走",
+        "实际部署：两台机器各跑 nginx/keepalived，virtual_router_id 必须一致，优先级不能相同，最好用 unicast_peer 单播代替组播（云上组播常被禁）",
+        "脑裂：两台都以为自己该当 MASTER，VIP 同时存在两份。要配 vrrp_script + 相互检测，再配合监控告警"
+      ],
+      "follow": [
+        "keepalived 只能管 IP 漂移，服务本身挂了怎么办？"
+      ]
+    },
+    {
+      "id": "c05-q12",
+      "ch": 5,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "负载均衡",
+        "选型"
+      ],
+      "q": "LVS、Nginx、HAProxy 三种负载均衡方式怎么比较，工作中怎么选",
+      "a": [
+        "LVS：四层（IP + 端口）转发，工作在内核态，抗负载能力最强，几十万并发很轻松；配置简单，稳定，自带双机热备；但做不了七层规则，不能按 URL / Header / Cookie 分流",
+        "Nginx：七层，能按 URL、域名、Header 分流；配置和测试都简单；默认自带 round-robin、least_conn、hash，ip_hash 也在，原文说「只有 round-robin 和 ip_hash」已经过时；缺点是默认健康检查是被动的，单机并发上限不如 LVS",
+        "HAProxy：专业七层代理，会话保持强（cookie 插入、会话粘滞），健康检查细（httpchk、check 间隔），策略多，还可以用 tcp 模式给 MySQL 做主从分流；比 Nginx 更专注负载均衡，但生态和静态资源能力不如 Nginx",
+        "选型看规模：几十万以上并发、纯四层 → LVS（DR 模式）+ keepalived",
+        "中小规模、需要七层分流 → Nginx（已经在用 Nginx，顺手）或 HAProxy（需要精细健康检查和会话保持时）",
+        "真实生产常见组合：LVS 在最前面做四层，后面挂 Nginx 做七层，再后面是应用——四层的抗压 + 七层的灵活都要",
+        "云上直接用 SLB / CLB，四层七层都有，选型问题变成「买哪个规格、是否开健康检查、是否开会话保持」"
+      ],
+      "follow": [
+        "LVS 的 DR 模式为什么要求 RS 和 Director 在同一个二层网络？"
+      ]
+    },
+    {
+      "id": "c05-q13",
+      "ch": 5,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "HTTPS",
+        "协议"
+      ],
+      "q": "HTTP 和 HTTPS 有什么区别，HTTPS 额外付出了什么代价",
+      "a": [
+        "HTTP 明文传输，中间任何一跳都能看到和篡改；HTTPS 是 HTTP 外面套一层 TLS，解决加密、完整性校验、身份认证三件事",
+        "端口不同：HTTP 80，HTTPS 443",
+        "证书：HTTPS 要有 CA 签发的证书，证书绑定域名，浏览器靠证书链验证对端身份；自签证书浏览器会红脸",
+        "要纠正原文「免费证书较少、需要一定费用」这个说法：现在 Let's Encrypt 和各大云的免费 DV 证书很普遍，成本主要在运维自动化（申请、续期、分发）而不是钱",
+        "性能代价：TLS 握手多几个 RTT（TLS1.3 降到 1-RTT，会话复用可以 0-RTT），加解密有 CPU 开销——现代 CPU 上有 AES-NI 指令，开销很小，一般把 TLS 卸载到 Nginx / 负载均衡上",
+        "SEO 和浏览器：主流浏览器把 HTTP 站点标记为「不安全」，搜索排序也偏向 HTTPS，HTTP/2 实际上只支持 HTTPS 实现",
+        "HTTPS 不是万能的：它只保证传输过程，不防 XSS、SQL 注入这类应用层漏洞，也不防服务端自己被拖库"
+      ],
+      "follow": [
+        "证书快到期了，怎么做到零中断续期？"
+      ]
+    },
+    {
+      "id": "c05-q14",
+      "ch": 5,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "安全",
+        "攻击"
+      ],
+      "q": "说一下你了解的 Web 应用攻击方式，以及对应的防护手段",
+      "a": [
+        "DDoS / 洪水攻击：分两类，流量型打带宽，资源耗尽型打内存和 CPU，让服务无法响应；防护靠带宽清洗、云 WAF、限流、CDN 隐藏源站",
+        "SQL 注入：把 SQL 拼进参数里执行，能拖库甚至删库；防护用参数化查询 / 预编译，别自己拼字符串，再叠加最小权限账号和 WAF",
+        "XSS 跨站脚本：页面里注入 JS，偷 cookie 或伪造操作；防护是输出转义、CSP 响应头、cookie 加 HttpOnly",
+        "CSRF 跨站请求伪造：借用用户已登录的 cookie 发请求；防护用 SameSite cookie、csrf token、校验 Referer",
+        "OS 命令注入：参数拼进 shell 命令，比如 ping $ip 传进去 1.1.1.1; rm -rf /；防护是别用 shell 拼接，用参数数组，做白名单校验",
+        "文件上传漏洞和目录穿越：限制后缀和白名单校验、上传目录不给执行权限、文件名重命名、路径规范化",
+        "越权访问（IDOR）：改一下 URL 里的 id 就能看别人的数据，防护是每个接口都校验当前用户对资源的归属，不能信前端",
+        "SSRF：让服务器替攻击者去访问内网地址，防护是限制目标网段和协议",
+        "弱口令 / 暴力破解：登录接口限速、验证码、锁定策略",
+        "共同套路：输入一律不信、最小权限、敏感操作二次验证、上 WAF 兜底，再加日志审计"
+      ],
+      "follow": [
+        "WAF 能挡住 SQL 注入，是不是代码就不用改了？"
+      ]
+    },
+    {
+      "id": "c05-q15",
+      "ch": 5,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "LVS",
+        "四层"
+      ],
+      "q": "简单介绍 LVS 的三种负载均衡模式",
+      "a": [
+        "NAT 模式：请求和响应都要经过负载均衡器，Director 把目标地址改成 RS 的地址；RS 的网关必须指向 Director，所以 Director 是瓶颈，但支持端口映射、RS 可以是任意操作系统",
+        "DR 模式：只改写请求报文的 MAC 地址，RS 处理完直接用自己的 IP 回包给客户端，不经过 Director；性能最好，生产上用得最多",
+        "DR 的硬要求：Director 和 RS 必须在同一个二层网络；RS 上要绑 VIP 并抑制 ARP 响应（arp_ignore / arp_announce，或者用 arptables），否则 VIP 冲突",
+        "TUN 模式：用 IP 隧道把原始报文封装后发给 RS，RS 解包后直接回包；可以跨机房，但 RS 要支持隧道，MTU 要调，实际用得少",
+        "三种模式的关键区别是「响应要不要回 Director」：NAT 要，DR 和 TUN 不要",
+        "补充一个工程里更常用的：FULLNAT（阿里开源），请求和响应都过 Director 但做了源地址转换，解决了 RS 网关必须指向 Director 的问题，云厂商的 SLB 底层常见",
+        "调度算法是另一件事：rr 轮询、wrr 加权、lc 最少连接、wlc 加权最少连接、sh 源地址哈希"
+      ],
+      "follow": [
+        "DR 模式下如果 RS 没做 ARP 抑制，会出现什么现象？"
+      ]
+    },
+    {
+      "id": "c05-q16",
+      "ch": 5,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "Redis",
+        "Memcached"
+      ],
+      "q": "Redis 和 Memcached 有什么区别，各自优势在哪",
+      "a": [
+        "Memcached 只有简单的 key-value，value 就是字符串；Redis 有 string / hash / list / set / zset 这些结构，能做集合运算、排序、计数",
+        "持久化：Memcached 重启数据全没；Redis 有 RDB 快照和 AOF 日志，能恢复到最近一次落盘点",
+        "分布式：Redis 有主从、哨兵、Cluster 分片；Memcached 官方客户端靠一致性哈希分片，没有内置复制",
+        "单值上限：Redis 一个 string 最大 512MB，Memcached 一个 item 最大 1MB（要改 -I 参数，但别乱改，内存块分配会碎）",
+        "要纠正原文一个说法：Redis 不是「单核」，是单线程处理命令（6.0 之后网络 IO 可以多线程），Memcached 是多线程，所以单纯压测纯 KV 大并发时 Memcached 可能更高",
+        "Redis 还有 Lua 脚本、事务、发布订阅、Stream、GEO、分布式锁这些 Memcached 没有的能力",
+        "选型：只做纯内存对象缓存、追求极致简单 → Memcached 也不是不能选；但绝大多数场景直接上 Redis，功能覆盖太全",
+        "原文说「redis 比 memcached 快很多」不严谨，两者都是内存 KV，速度在同一量级，Redis 的优势是功能不是速度"
+      ],
+      "follow": [
+        "Redis 单线程还要不要担心多核 CPU 用不满？"
+      ]
+    },
+    {
+      "id": "c05-q17",
+      "ch": 5,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "Redis",
+        "内存"
+      ],
+      "q": "为什么 Redis 要把所有数据放在内存里",
+      "a": [
+        "内存随机访问是纳秒级（约 100ns），磁盘随机 IO 是微秒到毫秒级（HDD 约 10ms，SSD 约 100μs），差好几个数量级，这不是「优化」能补回来的",
+        "Redis 靠异步方式落盘：RDB 是 fork 子进程做快照（COW 写时复制），AOF 是追加写、顺序 IO，两者都不阻塞主线程的正常读写",
+        "所以 Redis 是「内存为主、磁盘为辅」：内存保证速度，磁盘只保证重启后能恢复",
+        "代价是内存贵、容量小：必须配 maxmemory 和淘汰策略（allkeys-lru / volatile-lru / allkeys-random 等），否则会 OOM 或者被系统 OOM Killer 干掉",
+        "如果内存不够，可以「内存 + SSD」的分层方案，但那是别的产品（比如 RocksDB、或者 Redis 企业版的 Redis on Flash），原生 Redis 不做冷热分层",
+        "面试里可以补一句：数据量超过单机内存时，正确做法是分片（Cluster）而不是换存储引擎"
+      ],
+      "follow": [
+        "Redis 配了 maxmemory 但没配淘汰策略，会怎样？"
+      ]
+    },
+    {
+      "id": "c05-q18",
+      "ch": 5,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "Redis",
+        "场景"
+      ],
+      "q": "简述 Redis 的常见使用场景",
+      "a": [
+        "缓存：最主流，缓存热点数据、页面片段、接口结果，配合过期时间和淘汰策略",
+        "会话共享：多台应用共用 session，比文件存储好，重启不掉登录态",
+        "分布式锁：SET key value NX PX 30000 加锁，Lua 脚本校验后释放，防止误删别人的锁",
+        "计数器 / 限流：INCR 天然原子，做访问计数、接口限流（令牌桶、固定窗口）",
+        "排行榜：zset 按 score 排序，ZREVRANGE 取 TopN，游戏和运营活动常用",
+        "消息队列：list 的 LPUSH/BRPOP，或者 5.0 之后的 Stream（支持消费组、ack）",
+        "去重和基数统计：set 做去重，bitmap 做签到，HyperLogLog 做 UV 估算（误差 0.81%）",
+        "发布订阅：实时通知、聊天室，注意它不持久化，订阅者掉线消息就丢，重要消息别用它",
+        "地理位置：GEO 系列命令做附近的人、距离计算",
+        "购物车、点赞、关注关系：hash / set 的结构天然合适"
+      ],
+      "follow": [
+        "用 Redis 做消息队列，和 Kafka 比差在哪？"
+      ]
+    },
+    {
+      "id": "c05-q19",
+      "ch": 5,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "Redis",
+        "一致性"
+      ],
+      "q": "Redis 集群会丢写操作吗，为什么",
+      "a": [
+        "会。Redis 的主从复制是异步的：主节点写完就返回成功，再异步把命令发给从节点",
+        "如果主节点在把命令同步给从节点之前挂了，这部分写就丢了；哨兵切换后新主节点上没有这些数据",
+        "Redis Cluster 也一样，故障转移期间未同步的写会丢，它保证的是可用性不是强一致性（CAP 里偏 AP）",
+        "极端情况是脑裂：网络分区时旧主还在收写，客户端还连着它，切回来时这批写就被覆盖了",
+        "缓解手段一：配 min-replicas-to-write 和 min-replicas-max-lag，从节点不够或延迟太大时主节点直接拒绝写",
+        "缓解手段二：AOF appendfsync everysec，最坏丢 1 秒；要更少丢就用 always，但性能直线下降",
+        "缓解手段三：WAIT 命令可以让客户端等 N 个副本确认，但它是同步等待不是事务，不能替代强一致",
+        "要真正强一致就别用 Redis 当账本，关键数据落 MySQL 这类支持事务的库，Redis 只做缓存和加速"
+      ],
+      "follow": [
+        "什么业务场景可以接受 Redis 丢写？"
+      ]
+    },
+    {
+      "id": "c05-q20",
+      "ch": 5,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "Redis",
+        "数据结构"
+      ],
+      "q": "描述 Redis 常见的数据结构类型及使用场景",
+      "a": [
+        "string：字符串，最基础的类型，能存文本、数字、二进制；场景是缓存对象、计数器 INCR、分布式锁",
+        "hash：字段和值的映射，适合存对象（用户信息、配置），可以只改其中一个字段，比整个 string 重写省",
+        "list：双向链表，两头进出都快；场景是消息队列（LPUSH + BRPOP）、最新列表、时间线",
+        "set：无序不重复集合，能做交并差；场景是好友关系、标签、抽奖去重、共同关注",
+        "zset：带 score 的有序集合，按分数排序；场景是排行榜、延时队列（score 存时间戳）、带权重的队列",
+        "bitmap：本质是 string 的位操作，极省内存；场景是签到、活跃用户标记、布隆过滤器",
+        "HyperLogLog：基数估算，固定约 12KB 能估上亿 UV，误差 0.81%；场景是 UV 统计",
+        "GEO：地理位置，底层是 zset；场景是附近的人、门店距离",
+        "Stream：5.0 引入的日志型结构，支持消费组和 ack；场景是轻量消息队列",
+        "底层编码会随数据量变：小数据用 listpack / intset，大了自动转 hashtable / skiplist，这个决定了内存占用，做容量规划时要看"
+      ],
+      "follow": [
+        "zset 底层为什么用跳表而不是红黑树？"
+      ]
+    },
+    {
+      "id": "c05-q21",
+      "ch": 5,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "Redis",
+        "多核"
+      ],
+      "q": "Redis 是单线程的，怎么提高多核 CPU 的利用率",
+      "a": [
+        "先澄清：单线程指的是「命令处理」是单线程，所以一条命令不会并行；网络 IO 在 6.0 之后可以配 io-threads 多线程",
+        "办法一：一台机器跑多个 Redis 实例，绑不同的 CPU 核（taskset），各自监听不同端口、不同持久化目录；客户端按 key 路由",
+        "办法二：上 Redis Cluster，把数据分片到多个主节点，天然用满多核和多机",
+        "办法三：读写分离，主写从读，把读流量分到从节点",
+        "办法四：按业务拆实例，缓存、会话、队列各用一个实例，互不影响（也避免一个大 key 拖垮全部）",
+        "注意一：多实例时 maxmemory 要按实例数平分，否则内存超了会触发 swap，性能直接崩",
+        "注意二：单线程不是缺点，而是设计选择——没有锁竞争、没有上下文切换，单实例就能到 10 万级 QPS，真正的瓶颈通常是网络和命令复杂度",
+        "注意三：真正拖慢单实例的往往是大 key、keys *、全量 hgetall 这类操作，先治理这些比加实例更有效"
+      ],
+      "follow": [
+        "Redis 6 的 io-threads 开了就更快吗？"
+      ]
+    },
+    {
+      "id": "c05-q22",
+      "ch": 5,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "Redis",
+        "运维"
+      ],
+      "q": "简述 Redis 常见性能问题和解决方案",
+      "a": [
+        "持久化阻塞：RDB 的 fork 时间和内存量成正比，内存越大 fork 越久；AOF rewrite 也会 fork。方案是把主库的持久化放到从库做，或者控制单实例内存（建议 10GB 以内）",
+        "主从复制延迟：大 key、全量同步、带宽打满都会让从库落后。方案是主从同机房、控制写入速度和 key 大小、监控 replication lag",
+        "大 key 和热 key：单个 value 太大导致网络和内存抖动，单个 key 太热把单核打满。方案是拆分、本地缓存、读写分离",
+        "慢命令：keys *、flushall、全量 hgetall / smembers / zrange、sort 大集合。方案线上禁用，用 scan 代替 keys",
+        "内存碎片和淘汰：mem_fragmentation_ratio 长期 > 1.5 说明碎片多，可以用 activedefrag；淘汰策略要配好，别让内存打满",
+        "网络和连接：短连接频繁建连、客户端没配连接池、网卡打满。方案是连接池、pipeline 批量、监控网卡",
+        "swap：内存不够被换到磁盘，延迟从微秒变毫秒。方案是 vm.overcommit、预留内存、监控 swapped 指标",
+        "总结：Redis 的性能问题 90% 来自「用法」而不是「配置」，先看 slowlog 和 bigkeys 再谈调参"
+      ],
+      "follow": [
+        "为什么建议把 Redis 单实例内存控制在 10GB 左右？"
+      ]
+    },
+    {
+      "id": "c05-q23",
+      "ch": 5,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "MongoDB",
+        "分片"
+      ],
+      "q": "MongoDB 熟悉吗，一般部署几台，分片是怎么工作的",
+      "a": [
+        "部署过，生产上一般先上副本集（replica set），不是主从；副本集至少 3 个节点，1 主 2 从，选举要多数派，所以 3 台或 5 台，偶数台没意义",
+        "要纠正原文：MongoDB 官方的 master-slave 模式在 3.6 之后已经废弃，现在的标准是 replica set",
+        "副本集做的是高可用和读扩展：主节点写，从节点可以按 readPreference 读；主挂了自动选举新主",
+        "数据量大了上分片集群：结构是 mongos（路由）+ config server（3 个副本集，存元数据）+ 多个 shard（每个 shard 本身是一个副本集）",
+        "分片原理：按 shard key 把集合切成 chunk，chunk 分散到各个 shard，每个 shard 只负责一部分数据；客户端连 mongos，由它按 shard key 路由到目标 shard",
+        "shard key 选择很关键：基数要够大、分布要均匀、最好能覆盖常用查询，否则会出现热点 chunk 和数据倾斜",
+        "chunk 迁移由 balancer 负责，迁移期间会有 IO 和网络开销，业务高峰期可以关掉 balancer",
+        "容量规划：先算数据量和索引量，再算每个 shard 的上限，别一上来就分片——分片之后改 shard key 很痛苦"
+      ],
+      "follow": [
+        "shard key 选错了有什么后果，能改吗？"
+      ]
+    },
+    {
+      "id": "c05-q24",
+      "ch": 5,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "CDN"
+      ],
+      "q": "CDN 是什么，它是怎么工作的",
+      "a": [
+        "CDN 是内容分发网络：在用户和源站之间加一层分布在全国/全球的边缘节点，把内容缓存到离用户最近的地方，减少传输距离和源站压力",
+        "工作流程：用户请求域名 → DNS 解析返回 CNAME → 由 CDN 的调度系统按用户所在地、运营商、节点负载选一个最优边缘节点 → 节点有缓存就直接返回，没有就回源",
+        "调度方式主要有两种：DNS 调度（按 LocalDNS 出口 IP 判断区域，精度有限）和 Anycast（同一个 IP 广播到多个节点，靠 BGP 选最近，精度更高）",
+        "缓存策略：按 URL 和参数做缓存 key，设 TTL；静态资源（图片、CSS、JS、视频）命中率高，动态接口一般不缓存",
+        "运维动作：预热（提前把文件推到节点，避免第一批用户慢）、刷新（内容更新后强制过期）——刷新是按 URL 逐条或按目录，注意配额",
+        "加速之外的收益：抗攻击（隐藏源站 IP、吸收 DDoS）、HTTPS 证书可以放在 CDN 上统一管理",
+        "常见坑：缓存没清导致改版后用户看到旧页面；带 cookie 的请求被缓存；HTTPS 回源没配好；命中率低（key 里带了随机参数、TTL 太短）",
+        "判断 CDN 有没有生效：看响应头的 X-Cache / Via 字段，或者用不同地区的节点测同一个 URL 的响应时间"
+      ],
+      "follow": [
+        "静态资源更新后用户还看到旧版本，可能是什么原因？"
+      ]
+    },
+    {
+      "id": "c05-q25",
+      "ch": 5,
+      "kind": "concept",
+      "level": 2,
+      "src": "edited",
+      "tag": [
+        "中间件",
+        "JVM"
+      ],
+      "q": "什么是中间件，什么是 JDK",
+      "a": [
+        "中间件是介于操作系统和应用之间的一层软件，屏蔽底层差异，让不同系统、不同语言的应用能交换数据、共享资源",
+        "它存在的意义是「复用」：认证、事务、消息、连接池这些通用能力不用每个应用自己写",
+        "常见中间件分类：Web 容器（Tomcat / JBoss / WebLogic / WebSphere）、消息队列（Kafka / RabbitMQ / RocketMQ）、缓存（Redis）、反向代理和网关（Nginx / Kong）",
+        "JDK 是 Java 开发工具包，包含 JRE（JVM + 核心类库）和开发工具（javac 编译器、jar、javadoc、jps、jstat、jmap、jstack 这些诊断工具）",
+        "三者的关系：JDK ⊃ JRE ⊃ JVM。只跑 Java 程序装 JRE 就够，要编译和排查问题必须装 JDK——jstat/jmap 这些运维排查 GC 的工具都在 JDK 里",
+        "运维需要关心 JDK 版本：不同版本对 GC、容器化支持不一样（比如 8 默认 ParallelGC，11 之后默认 G1），还有 Tomcat / Spring 的兼容性要求"
+      ],
+      "follow": [
+        "机器上只装了 JRE，还能用 jstat 看 GC 吗？"
+      ]
+    },
+    {
+      "id": "c05-q26",
+      "ch": 5,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "Tomcat",
+        "选型"
+      ],
+      "q": "Tomcat 和 Resin 有什么区别，工作中怎么选",
+      "a": [
+        "Tomcat 是 Apache 基金会的标准 Servlet 容器，用户多、文档全、生态好，出问题网上大概率能搜到",
+        "Resin 是 Caucho 的产品，有开源版和商业版，早期以性能和 JSP 编译速度见长，但用户基数小、资料少",
+        "兼容性和稳定性：Tomcat 实现规范最全，新版本跟进快，和 Spring 生态磨合得最久；Resin 在冷门特性上容易踩坑",
+        "性能：早年 Resin 在高并发下确实更好，但现在的差距已经很小，而且瓶颈通常在应用和数据库，不在容器",
+        "选型：中小企业、要稳定和兼容 → Tomcat（实际也占绝大多数）",
+        "追求极致性能或者需要商业支持 → Resin 商业版，或者直接用 Jetty / Undertow（Spring Boot 内置的就是这俩）",
+        "大型企业还有 WebLogic / WebSphere 的选择，主要是购买商业支持和合规要求，不是性能原因",
+        "面试答法：承认 Resin 性能优势，但说清楚现在选型主要看生态、稳定性、团队熟悉度和商业支持，Tomcat 是默认答案"
+      ],
+      "follow": [
+        "Spring Boot 内置的容器是什么，和 Tomcat 什么关系？"
+      ]
+    },
+    {
+      "id": "c05-q27",
+      "ch": 5,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "缓存",
+        "Squid"
+      ],
+      "q": "Squid、Varnish 和 Nginx 有什么区别，工作中怎么选",
+      "a": [
+        "三者的共同点是都能做 HTTP 缓存代理，但定位不同：Squid 是老的通用代理，Varnish 是专门的 HTTP 加速缓存，Nginx 是 Web 服务器 + 反向代理，缓存只是它的一个模块",
+        "Squid：正向代理和反向代理都做，支持磁盘缓存，能缓存大对象，历史长、案例多；缺点是配置复杂、单核处理、性能不如 Varnish",
+        "Varnish：只做反向代理缓存，VCL 配置被编译成 C，性能极强，内存缓存为主（也有落盘），支持正则批量 purge；缺点是默认不缓存带 Set-Cookie 的响应，TLS 要前面再挂一层 Nginx 或者用商业版",
+        "Nginx：proxy_cache 也能缓存动态响应，关键是它同时还能做七层分流、限流、TLS 卸载，一个组件干好几件事",
+        "要纠正原文「nginx 只能缓存静态文件」：proxy_cache 缓存的是后端响应，动态也能缓存，只是配置比 Varnish 粗糙、命中率和统计不如专业产品",
+        "选择：纯内存、追求极致命中性能、页面级缓存 → Varnish",
+        "缓存大文件、要磁盘缓存、或者需要正向代理 → Squid",
+        "已经在用 Nginx，缓存需求不极端 → 直接用 proxy_cache，少维护一个组件",
+        "规模大到一定程度的公司，往往是 CDN + Varnish + Nginx 三层缓存，各管一段"
+      ],
+      "follow": [
+        "Varnish 为什么不缓存带 Cookie 的响应？"
+      ]
+    },
+    {
+      "id": "c05-q28",
+      "ch": 5,
+      "kind": "code",
+      "level": 4,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "Nginx",
+        "缓存"
+      ],
+      "q": "Nginx 缓存的配置关键点是什么，缓存怎么清理",
+      "a": [
+        "定义缓存区：proxy_cache_path /data/cache levels=1:2 keys_zone=my_cache:10m max_size=10g inactive=60m use_temp_path=off; 放在 http 块里",
+        "levels 是目录层级，用哈希值分目录，避免单目录文件过多；keys_zone 是内存里存索引的空间；inactive 是多久没被访问就删；max_size 是磁盘上限，超了会按 LRU 淘汰",
+        "开启：在 location 里写 proxy_cache my_cache; proxy_cache_valid 200 302 10m; proxy_cache_valid 404 1m;",
+        "缓存 key 默认是 $scheme$proxy_host$request_uri，要按需改写 proxy_cache_key，注意别把随机参数带进去，否则永远命中不了",
+        "调试：add_header X-Cache-Status $upstream_cache_status; 看 HIT / MISS / EXPIRED / BYPASS / STALE",
+        "清理方式一：直接删 /data/cache 下的文件，但内存里的索引还在，要 nginx -s reload 或者重启",
+        "清理方式二：装 ngx_cache_purge 模块，配 proxy_cache_purge 按 URL 批量清，需要自己在 location 里开权限",
+        "清理方式三：改 proxy_cache_key 或者加 proxy_cache_bypass，让指定请求绕过缓存直接回源",
+        "缓存还要注意：带 cookie 的请求要么不缓存（proxy_cache_bypass $cookie_session），要么在 key 里带上用户维度"
+      ],
+      "follow": [
+        "缓存文件删了但用户还能看到旧内容，可能是哪里没清干净？"
+      ]
+    },
+    {
+      "id": "c05-q29",
+      "ch": 5,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "Redis",
+        "缓存"
+      ],
+      "q": "Redis 的缓存雪崩、击穿、穿透分别是什么，怎么解决",
+      "a": [
+        "雪崩：大量 key 在同一时间点集中过期，或者 Redis 整个挂了，请求全打到数据库上，数据库被打垮",
+        "雪崩的解法：过期时间加随机偏移（比如 30 分钟 ± 5 分钟）；Redis 本身做高可用（哨兵 / Cluster）；本地二级缓存兜底；接口限流和熔断降级",
+        "击穿：某一个热点 key 过期的瞬间，大量并发请求同时穿透到数据库",
+        "击穿的解法：互斥锁（SET NX 只让一个线程回源，其他线程等）；或者热点 key 逻辑过期、永不过期，后台异步刷新",
+        "穿透：查的是一个根本不存在的数据，缓存里没有、数据库里也没有，每次请求都打到数据库；常见于恶意刷不存在的 id",
+        "穿透的解法：参数合法性校验；布隆过滤器挡掉一定不存在的数据；空值缓存（存一个短过期的空对象）；接口层加限流",
+        "三个词的区别记法：雪崩是「大面积同时失效」，击穿是「单个热点失效」，穿透是「数据本来就不存在」",
+        "共同底线：数据库前面要有兜底（限流 + 连接池上限），不能让缓存层的问题变成数据库的雪崩"
+      ],
+      "follow": [
+        "布隆过滤器为什么会有误判，误判会影响业务吗？"
+      ]
+    },
+    {
+      "id": "c05-q30",
+      "ch": 5,
+      "kind": "code",
+      "level": 3,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "Redis",
+        "慢查询"
+      ],
+      "q": "Redis 慢查询怎么排查",
+      "a": [
+        "先开慢日志：slowlog-log-slower-than 10000 表示超过 10000 微秒（10 毫秒）就记录，设成 0 会记录所有命令，别在生产这么干",
+        "slowlog-max-len 控制保留多少条，默认 128，排查时可以调大",
+        "查看：SLOWLOG GET 10 看最近 10 条，包含命令、耗时、客户端地址、时间戳；SLOWLOG LEN 看总数；SLOWLOG RESET 清空",
+        "找到慢命令后看它是不是复杂度问题：keys *、hgetall 大 hash、smembers 大 set、sort、zrange 全量，这些都要换写法（scan 分批、按需取字段）",
+        "排除大 key：redis-cli --bigkeys 扫一遍，或者 MEMORY USAGE key 看单个 key 占多少",
+        "注意慢日志只记录命令执行时间，不包括排队和网络往返；客户端觉得慢但 slowlog 干净，就要看连接数、网络、或者是不是在等锁",
+        "其他排查手段：INFO commandstats 看每类命令的调用次数和平均耗时；redis-cli --latency 看本机延迟；monitor 短暂抓现场（生产慎用，会拖慢）",
+        "线上红线：禁用 keys *、flushall、flushdb，用 rename-command 直接改名禁用掉"
+      ],
+      "follow": [
+        "slowlog 显示的耗时和客户端测出来的耗时对不上，差在哪？"
+      ]
+    },
+    {
+      "id": "c05-q31",
+      "ch": 5,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "Redis",
+        "大 key"
+      ],
+      "q": "什么是 Redis 大 key，有什么危害，怎么发现和处理",
+      "a": [
+        "大 key 指单个 value 过大，或者 hash / list / set / zset 里元素极多；经验阈值：string 超过 10KB，集合类元素超过 5000 个",
+        "危害一：删除阻塞。del 是同步释放内存，几百 MB 的 key 删起来会让主线程卡住好几秒",
+        "危害二：迁移和主从同步卡顿。集群做 slot 迁移、从库做全量同步时，大 key 会长时间占用带宽和内存",
+        "危害三：网络和内存抖动。一次读大 key 就能把网卡打满，客户端反序列化也慢；fork 时 COW 还可能让内存翻倍",
+        "危害四：集群倾斜。大 key 所在的 slot 落到某个节点上，这个节点的内存和流量就明显高于别的节点",
+        "发现：redis-cli --bigkeys 按类型扫最大的 key；--memkeys 看内存占用；MEMORY USAGE key 查单个；也可以用 scan 采样自己统计",
+        "处理一：拆分。hash 按字段分桶（比如 user:1001:info 拆成多段），list 按范围拆，别把几万个元素塞一个 key",
+        "处理二：渐进式删除。不要 del，用 unlink 异步删除；或者 hscan + hdel 分批删，每批几百个，中间留间隔",
+        "处理三：从源头控制。写入前判断长度，超限就分段；设计阶段就把 key 的粒度定好"
+      ],
+      "follow": [
+        "unlink 为什么不会阻塞主线程？"
+      ]
+    },
+    {
+      "id": "c05-q32",
+      "ch": 5,
+      "kind": "concept",
+      "level": 3,
+      "src": "doc",
+      "tag": [
+        "Kafka",
+        "消息队列"
+      ],
+      "q": "简述 Kafka 的基础概念：broker、topic、partition、offset",
+      "a": [
+        "broker：一个 Kafka 服务实例（节点），多个 broker 组成一个集群",
+        "topic：消息的逻辑分类，生产者往 topic 写，消费者从 topic 读",
+        "partition：topic 的物理分片，一个 topic 可以分多个 partition，分布在不同 broker 上，是 Kafka 水平扩展和并行消费的基础",
+        "offset：消息在 partition 内的唯一序号，单调递增，消费者靠提交 offset 记录自己消费到哪了",
+        "补充几个必知概念：replication 副本（每个 partition 有 leader 和 follower，leader 挂了自己从 ISR 里选新 leader）",
+        "consumer group：同一个 group 内，一个 partition 只会被一个消费者消费；不同 group 之间互不影响，相当于广播",
+        "顺序性：Kafka 只保证单个 partition 内有序，要全局有序只能用一个 partition（就失去并行了），所以 key 相同的消息要发到同一个 partition",
+        "投递语义：至少一次是默认（可能重复），要精确一次得开幂等和事务",
+        "acks 参数决定可靠性：0 不等确认、1 等 leader 落盘、all 等所有 ISR 确认"
+      ],
+      "follow": [
+        "消费者组里加了一台消费者，为什么吞吐没涨？"
+      ]
+    },
+    {
+      "id": "c05-q33",
+      "ch": 5,
+      "kind": "scenario",
+      "level": 5,
+      "src": "edited",
+      "tag": [
+        "Tomcat",
+        "JVM"
+      ],
+      "q": "Tomcat 频繁 FullGC，你怎么排查",
+      "a": [
+        "先确认现象：用 jstat -gcutil <pid> 1000 连续看，重点看老年代使用率 FGC 次数和 FGCT 总耗时，如果 FGC 每分钟好几次、FGCT 持续增长就是有问题",
+        "看 GC 日志：JDK8 用 -Xloggc，JDK9 之后用 -Xlog:gc*，确认是「老年代降不下来」还是「对象晋升太快」",
+        "如果是老年代降不下来，大概率是内存泄漏：jmap -histo:live <pid> 看对象数量排名，再 jmap -dump:format=b,file=heap.hprof <pid> 导出堆，用 MAT 找引用链",
+        "常见泄漏点：静态集合只加不删、ThreadLocal 用完不 remove、连接和流没关、缓存没有上限、类加载器泄漏（热部署反复 reload 会撑爆 Metaspace）",
+        "如果是对象晋升太快，看是不是堆太小或者新生代太小：-Xms 和 -Xmx 是否相等、新生代比例、是不是有一批大对象（一次查全表、大文件读进内存）",
+        "检查 JVM 参数：堆设多大、GC 器是什么、有没有开 -XX:+HeapDumpOnOutOfMemoryError 留现场",
+        "业务层看：是不是有定时任务在整点跑大批量查询，或者某个接口突然被刷",
+        "处理：先扩堆止血（改 -Xmx 后滚动重启），再定位泄漏点改代码；长期上 G1 / ZGC，配好 GC 日志和监控告警",
+        "注意别做的事：只看一次 jstat 就下结论、直接重启了事不问根因、把堆调到 32G 以上还用 ParallelGC（大堆 FullGC 会停很久）"
+      ],
+      "follow": [
+        "为什么堆很大时建议用 G1 而不是 CMS / Parallel？"
+      ]
+    },
+    {
+      "id": "c05-q34",
+      "ch": 5,
+      "kind": "code",
+      "level": 4,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "Nginx",
+        "动静分离"
+      ],
+      "q": "什么是动静分离，Nginx + Tomcat 怎么实现",
+      "a": [
+        "动静分离就是把静态资源（图片、CSS、JS、字体、视频）和动态请求（JSP、PHP、接口）分开处理，静态的由 Nginx 直接返回，动态的才转给 Tomcat",
+        "好处：静态文件 Nginx 处理效率高几个数量级，Tomcat 的线程只用来处理真正的业务，压力大幅下降",
+        "配置：location ~* \\.(jpg|jpeg|png|gif|css|js|ico|woff2?)$ { root /data/static; expires 7d; access_log off; }",
+        "配置：location / { proxy_pass http://tomcat_pool; proxy_set_header Host $host; }",
+        "关键点一：location 的匹配顺序——正则 location 优先于普通前缀，但 = 精确匹配优先级最高；写错顺序会导致静态请求被转发给 Tomcat",
+        "关键点二：root 是拼接路径（root + URI），alias 是替换路径，两个别混用，否则 404",
+        "关键点三：expires 和 Cache-Control 一定要配，否则浏览器每次都来问；但 index.html 这类入口文件不能长缓存",
+        "静态资源量大、跨地域访问多时再上一层 CDN，Nginx 只做回源",
+        "验证：curl -I 看响应头的 Content-Type 和 Cache-Control，确认静态文件没被 proxy_pass 转走；再对比 Tomcat 的访问日志里有没有静态资源的请求"
+      ],
+      "follow": [
+        "静态文件放 Nginx 本机磁盘和放对象存储，怎么选？"
+      ]
+    },
+    {
+      "id": "c05-a01",
+      "ch": 5,
+      "kind": "acceptance",
+      "level": 3,
+      "src": "written",
+      "tag": [
+        "验收",
+        "分层排查"
+      ],
+      "q": "【验收一】一个 LNMP + Tomcat 的站点，Nginx 在最前面。用户反馈「页面时快时慢，有时候转十几秒才出来」，但 Nginx、PHP、Tomcat 的日志里都没有 5xx。说出你的分层排查顺序，每层看什么。",
+      "a": [
+        "第一层先定性：是所有页面都慢，还是某些页面慢；是所有用户都慢，还是某个地区/某个运营商慢。这一步决定后面查哪条路",
+        "第二层看 Nginx 日志的两个时间：$request_time 和 $upstream_response_time。前者减去后者就是 Nginx 自己的耗时，差值大说明卡在 Nginx（连接数、磁盘、TLS），差值小说明慢在后端",
+        "第三层看后端：PHP 开 slowlog + status 页看进程池是否打满；Tomcat 看 catalina 线程池 busyThreads、GC 日志、jstack 看线程是不是都卡在等 DB 连接",
+        "第四层看依赖：MySQL 开慢查询日志、show processlist 看有没有长事务和锁等待；Redis 看 slowlog、latency、有没有大 key",
+        "第五层看系统：vmstat 1 看 r 队列和 si/so，iostat -x 1 看 %util 和 await，ss -s 看连接数和 TIME_WAIT，dmesg 看有没有 OOM",
+        "第六层看网络：从客户端 mtr 到服务器，看每一跳的丢包和延迟；再看是不是只有某个运营商慢（DNS 解析到了别的节点）",
+        "收尾：把每一层的证据记下来（时间点、指标值、日志片段），因为「时快时慢」最怕的是排查时现象消失了，没有证据就只能靠猜"
+      ],
+      "follow": [
+        "如果 $request_time 和 $upstream_response_time 都很小，但用户还是说慢，问题可能在哪儿？"
+      ]
+    },
+    {
+      "id": "c05-a02",
+      "ch": 5,
+      "kind": "acceptance",
+      "level": 4,
+      "src": "written",
+      "tag": [
+        "验收",
+        "高可用"
+      ],
+      "q": "【验收二】画出这套架构：LVS(DR) + 2 台 Nginx + 4 台 Tomcat + Redis 主从 + MySQL 主从。逐层说明每个组件挂掉时用户看到什么、谁接管、要多久，以及怎么验证没有单点。",
+      "a": [
+        "流量路径：VIP 在 LVS 上，LVS 按 DR 模式转给两台 Nginx，Nginx 按 upstream 转给 4 台 Tomcat，Tomcat 读写 Redis 和 MySQL",
+        "LVS 挂：keepalived 把 VIP 漂到备机，切的是 ARP 通告，通常 3 秒左右；这期间新连接失败，用户看到的就是连接超时。前提是 RS 都做了 ARP 抑制，否则 VIP 会同时出现在两台机器上",
+        "Nginx 挂：LVS 的健康检查（或者前面的 keepalived）把它摘掉，流量全走另一台；单台 Nginx 要能扛住全量，压测时要按 N-1 做容量",
+        "Tomcat 挂：Nginx 的被动健康检查（max_fails / fail_timeout）在几次失败后把它标记 down，请求转给其他节点；正在处理的请求会 502，用户可能要刷新一次",
+        "Redis 主挂：哨兵选举新主，一般 10～30 秒；这期间写操作报错，应用要有降级（比如短暂直连 DB 或者返回缓存兜底），不能直接 500",
+        "MySQL 主挂：需要 MHA / Orchestrator 这类工具切换，通常 30 秒到几分钟；应用连接池必须能重建连接，否则切完了还连旧主。这一段是最容易出长时间故障的地方",
+        "怎么验证没有单点：逐层做「杀掉一台看现象」的演练——真的停 LVS、停 Nginx、停 Tomcat、停 Redis 主、停 MySQL 主，记录恢复时间和用户侧错误率；演练过和没演练过是两回事",
+        "还要验的隐藏单点：DNS、证书、共享存储、部署机、监控告警链路，这些平时不出事，出事就是全站"
+      ],
+      "follow": [
+        "MySQL 主从切换后应用还在连旧主，最常见的原因是什么？"
+      ]
+    },
+    {
+      "id": "c05-a03",
+      "ch": 5,
+      "kind": "acceptance",
+      "level": 5,
+      "src": "written",
+      "tag": [
+        "验收",
+        "容量与预案"
+      ],
+      "q": "【验收三】大促前夜，预计流量是平时的 10 倍。给出你的容量评估、压测、限流降级和回滚方案，并说明每个数值是怎么算出来的。",
+      "a": [
+        "容量评估从单请求资源消耗倒推：单台 Tomcat 压测得到稳定 QPS（比如 300，P99 在 200ms 内），目标 QPS 3000 就需要 10 台，再按 N-1 冗余算 12 台",
+        "连接数同理：单请求平均耗时 × QPS = 并发数，300ms × 3000 = 900 并发，Tomcat 的 maxThreads 和 Nginx 的 worker_connections 都要覆盖这个数并留 50% 余量",
+        "数据库是真正的天花板：先算 10 倍流量下的 QPS 和慢查询比例，读多写少的场景优先上缓存和读写分离，别指望加索引能扛十倍",
+        "压测要分两轮：单机基准（找出单机极限）和全链路（找出最慢的那一环）；用接近真实的流量模型，不要只压首页",
+        "限流放在最外层：Nginx 的 limit_req 按 IP 和接口两个维度，超过就返回 503 而不是让请求堆到后端；限流阈值要低于后端极限，留缓冲",
+        "降级预案分层：关掉非核心功能（评论、推荐、积分）、把动态页静态化、缓存兜底、必要时只读",
+        "开关必须提前做好并且演练过：配置中心一键切换，别指望半夜上去改代码",
+        "回滚方案：版本回滚（保留上一版镜像和一键发布）、配置回滚、数据库变更必须向前兼容（新老代码都能读）",
+        "监控和值班：核心指标（QPS、错误率、P99、GC、连接数、DB 慢查询）配告警阈值，阈值要提前按预估值设定，大促期间盯大屏而不是等电话",
+        "最后一步是把预案写成清单：谁在什么时候做什么操作，出问题按清单执行，不靠临场发挥"
+      ],
+      "follow": [
+        "如果压测通过但大促还是挂了，最可能是哪一环没覆盖到？"
+      ]
     }
   ]
 }
@@ -3656,6 +4592,303 @@ details.chap-drawer > summary:hover { background: var(--surface-2); }
         "三种写法完全等价，只有性能差别",
         "[[ ]] 是 POSIX 标准，所有 shell 都支持",
         "[ ] 支持 =~ 正则匹配"
+      ],
+      "answer": 0
+    },
+    "c05-q01": {
+      "options": [
+        "先看 slowlog 和 status 页定位到具体慢脚本和进程池状态，再决定改代码、调 max_children 还是限流",
+        "直接把 pm.max_children 调到最大，进程越多处理越快",
+        "重启一下 php-fpm 就好，进程高重启必然能解决",
+        "PHP-FPM 是单线程的，CPU 高只能加机器，没有别的办法"
+      ],
+      "answer": 0
+    },
+    "c05-q02": {
+      "options": [
+        "按 server_name 匹配 Host 头把不同域名分流到各自的 upstream，并用 proxy_set_header Host $host 透传原始域名",
+        "一台 Nginx 只能代理一个虚拟主机，多个站点必须装多个 Nginx",
+        "只能靠 listen 不同端口来区分不同虚拟主机",
+        "所有站点都 proxy_pass 到同一个 upstream，让后端按来源 IP 自己区分"
+      ],
+      "answer": 0
+    },
+    "c05-q03": {
+      "options": [
+        "proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for 往后追加，再在后端或用 realip 模块取第一个地址",
+        "proxy_set_header X-Forwarded-For $remote_addr，每层覆盖写就行",
+        "只改 access_log 的格式就够了，$remote_addr 会自动变成真实 IP",
+        "把 server_name 改成访客 IP 就能记录真实地址"
+      ],
+      "answer": 0
+    },
+    "c05-q04": {
+      "options": [
+        "8005 是关停端口，8009 是 AJP 给 httpd 用，8080 是 HTTP 应用访问端口",
+        "8005 是 AJP 端口，8009 是 HTTP 端口，8080 是关停端口",
+        "三个都是 HTTP 端口，只是加密方式不同",
+        "8005 是管理后台，8009 是数据库，8080 才是应用"
+      ],
+      "answer": 0
+    },
+    "c05-q05": {
+      "options": [
+        "BIO 一个请求占一个线程且阻塞；NIO 用 Selector 多路复用；APR 调本地库，Tomcat 8.5 之后默认 NIO",
+        "BIO 是非阻塞的，NIO 才是阻塞的",
+        "APR 性能最好，所以生产上必须装 tomcat-native",
+        "三种模式只是名字不同，性能完全一样"
+      ],
+      "answer": 0
+    },
+    "c05-q06": {
+      "options": [
+        "先用 jstat 和压测确认瓶颈在 GC 还是线程，再对应调 JVM 参数和连接器参数",
+        "所有参数调到最大就对了，maxThreads 越大越好",
+        "Tomcat 调优就是调 JVM 堆，堆越大越快",
+        "只调 GC 算法就行，连接器和线程池都不用管"
+      ],
+      "answer": 0
+    },
+    "c05-q07": {
+      "options": [
+        "unix socket 同机通信不走 TCP 栈更快但只能本机，tcp socket 可跨机器，单机场景优先 unix socket",
+        "unix socket 只能跨服务器，tcp socket 只能本机",
+        "两种方式性能完全一样，随便选一个",
+        "php-fpm 只能用 tcp socket 连接，unix socket 早就废弃了"
+      ],
+      "answer": 0
+    },
+    "c05-q08": {
+      "options": [
+        "limit_req 限流、realip 还原真实 IP、upstream 定义后端池，这些都是官方自带模块",
+        "ngx_cache_purge 是官方核心模块，装上就有",
+        "rewrite 模块是第三方模块，要单独编译才能用",
+        "stub_status 是商业版才有的状态页功能"
+      ],
+      "answer": 0
+    },
+    "c05-q09": {
+      "options": [
+        "轮询、加权、ip_hash、least_conn、hash 都是官方自带，fair 是第三方模块，要单独装",
+        "fair 是官方默认的负载均衡算法",
+        "Nginx 只有 round-robin 和 ip_hash 两种模式",
+        "ip_hash 能保证后端机器增减时请求完全不漂移"
+      ],
+      "answer": 0
+    },
+    "c05-q10": {
+      "options": [
+        "Nginx 事件驱动、静态文件和反代强；Apache 模块和 rewrite 强，但更吃内存",
+        "Apache 2.4 一定是阻塞的，所以高并发下必挂",
+        "Nginx 支持 .htaccess，分布式配置管理更灵活",
+        "两者性能完全一致，只是配置语法不同"
+      ],
+      "answer": 0
+    },
+    "c05-q11": {
+      "options": [
+        "靠 VRRP 通告，BACKUP 收不到通告就抢占 VIP，默认切换是秒级（3～4 秒）而不是毫秒级",
+        "靠专用心跳线检测，切换在 100 毫秒以内",
+        "MASTER 挂了之后要人工执行脚本才能切换 VIP",
+        "通过修改 DNS 把域名指向备机来实现切换"
+      ],
+      "answer": 0
+    },
+    "c05-q12": {
+      "options": [
+        "LVS 四层抗压最强但做不了七层规则；Nginx 和 HAProxy 能按 URL、Header 分流",
+        "LVS 能做七层分流，Nginx 只能做四层转发",
+        "HAProxy 不能给 MySQL 做负载均衡",
+        "并发量小的时候用 LVS，并发量大了反而要用 Nginx"
+      ],
+      "answer": 0
+    },
+    "c05-q13": {
+      "options": [
+        "HTTPS 是 HTTP 外套一层 TLS，提供加密、完整性校验和身份认证，代价是握手延迟和证书运维",
+        "HTTPS 就是换了个端口，协议内容没变",
+        "HTTPS 能防止 SQL 注入和 XSS",
+        "HTTPS 必须花钱买证书，免费证书根本用不了"
+      ],
+      "answer": 0
+    },
+    "c05-q14": {
+      "options": [
+        "SQL 注入靠参数化查询、XSS 靠输出转义和 CSP、CSRF 靠 token 和 SameSite cookie",
+        "上了 WAF 就不用改代码了",
+        "SQL 注入只能靠前端表单校验拦住",
+        "XSS 是服务端的问题，前端转义没什么用"
+      ],
+      "answer": 0
+    },
+    "c05-q15": {
+      "options": [
+        "NAT 请求响应都过 Director；DR 改 MAC 由 RS 直接回包；TUN 用 IP 隧道可以跨机房",
+        "DR 模式响应也要经过 Director，所以它最慢",
+        "NAT 模式性能最好，生产上应该首选 NAT",
+        "三种模式都要求 RS 和 Director 在同一二层网络"
+      ],
+      "answer": 0
+    },
+    "c05-q16": {
+      "options": [
+        "Redis 有丰富的数据结构、持久化和主从集群；Memcached 只有 KV，但它是多线程的",
+        "Redis 比 Memcached 快一个数量级，两者不在一个量级",
+        "Redis 是单核的，最多只能用一个 CPU 核",
+        "Memcached 支持持久化，Redis 不支持"
+      ],
+      "answer": 0
+    },
+    "c05-q17": {
+      "options": [
+        "内存随机访问比磁盘快好几个数量级，磁盘只用来异步持久化、保证重启后能恢复；代价是内存贵所以要配 maxmemory",
+        "因为磁盘比内存贵，所以数据只能放内存",
+        "Redis 不支持磁盘，只能把数据放在内存里",
+        "为了省 CPU，内存操作的 CPU 开销比磁盘小"
+      ],
+      "answer": 0
+    },
+    "c05-q18": {
+      "options": [
+        "缓存、会话共享、分布式锁、排行榜、计数器、消息队列，都能用对应的数据结构实现",
+        "Redis 只能当缓存用，其他场景都不合适",
+        "Redis 适合存大文件和视频素材",
+        "Redis 适合做关系型事务，可以直接替代 MySQL"
+      ],
+      "answer": 0
+    },
+    "c05-q19": {
+      "options": [
+        "会丢。主从复制是异步的，主节点挂掉前没同步过去的写就丢了，Redis 偏 AP 不保证强一致",
+        "不会丢，Redis 主从是同步复制",
+        "只有集群模式会丢，主从模式一条都不会丢",
+        "只要开了 AOF 就绝对不会丢"
+      ],
+      "answer": 0
+    },
+    "c05-q20": {
+      "options": [
+        "string/hash/list/set/zset 分别对应缓存、对象、队列、去重、排行榜，另外还有 bitmap、HyperLogLog、GEO、Stream",
+        "Redis 只有 string 一种结构，其他都是 string 的封装",
+        "zset 是无序集合，不能按分数排序",
+        "list 适合做排行榜，zset 才是做队列的"
+      ],
+      "answer": 0
+    },
+    "c05-q21": {
+      "options": [
+        "单线程指的是命令处理；用多实例按核绑定、上 Cluster 分片、读写分离才能用满多核",
+        "Redis 天生支持多线程命令处理，会自动用满所有 CPU 核",
+        "开 io-threads 之后命令就能并行执行了",
+        "单线程意味着一个机器上只能跑一个 Redis 实例"
+      ],
+      "answer": 0
+    },
+    "c05-q22": {
+      "options": [
+        "先用 slowlog 和 bigkeys 定位，大部分性能问题来自用法（大 key、慢命令）而不是配置",
+        "性能问题基本都是内存不够，加内存就能解决",
+        "Redis 变慢一定是网络问题",
+        "开 AOF 一定会慢，所以生产环境干脆别开"
+      ],
+      "answer": 0
+    },
+    "c05-q23": {
+      "options": [
+        "生产上用副本集至少 3 节点（要多数派选举），数据量大了再上 mongos + config server + shard 的分片集群",
+        "MongoDB 用一主一从两台就够，不需要选举",
+        "分片只要加 mongos 就行，不需要 config server",
+        "副本集的从节点默认也能承担写操作"
+      ],
+      "answer": 0
+    },
+    "c05-q24": {
+      "options": [
+        "靠 DNS 调度或 Anycast 把请求导向最近的边缘节点，命中就返回、没命中回源",
+        "CDN 就是把源站复制一份到云上，用户还是直接访问源站",
+        "CDN 只能加速图片，其他内容都加速不了",
+        "CDN 节点缓存永久有效，内容更新不需要刷新"
+      ],
+      "answer": 0
+    },
+    "c05-q25": {
+      "options": [
+        "中间件是应用和系统之间提供通用能力的一层；JDK = JRE + 编译和诊断工具（javac、jstat、jmap 等）",
+        "JDK 就是 JVM，装哪个版本都一样",
+        "中间件就是数据库的另一个叫法",
+        "排查 GC 用 JRE 里自带的 jstat 就够了，不需要 JDK"
+      ],
+      "answer": 0
+    },
+    "c05-q26": {
+      "options": [
+        "Tomcat 生态和兼容性最好，是默认选择；Resin 性能有优势但资料少、用户基数小",
+        "Resin 是 Apache 基金会的标准 Servlet 容器",
+        "Tomcat 性能比 Resin 差很多，所以大公司都用 Resin",
+        "两者完全等价，选哪个都一样"
+      ],
+      "answer": 0
+    },
+    "c05-q27": {
+      "options": [
+        "Squid 是通用代理带磁盘缓存，Varnish 是专业的 HTTP 内存缓存，Nginx 的缓存只是附带能力",
+        "Nginx 只能缓存静态文件，动态响应缓存不了",
+        "Varnish 支持正向代理，Squid 只支持反向代理",
+        "三者性能完全一样，选哪个都行"
+      ],
+      "answer": 0
+    },
+    "c05-q28": {
+      "options": [
+        "proxy_cache_path 定义目录、大小和 keyzone，proxy_cache_valid 设过期，删了缓存文件要 reload 才能清掉内存索引",
+        "proxy_cache 一开就会自动清理，什么都不用管",
+        "缓存目录直接 rm -rf 就行，不用 reload",
+        "缓存 key 默认会自动带上所有请求参数和 cookie"
+      ],
+      "answer": 0
+    },
+    "c05-q29": {
+      "options": [
+        "雪崩是大量 key 集中过期、击穿是单个热点 key 过期、穿透是查一个根本不存在的数据",
+        "雪崩是单个 key 过期，击穿是大量 key 同时过期",
+        "穿透是缓存和数据库都有数据，但请求还是慢",
+        "三个说的是同一件事，只是叫法不同"
+      ],
+      "answer": 0
+    },
+    "c05-q30": {
+      "options": [
+        "slowlog-log-slower-than 单位是微秒（10000 = 10 毫秒），SLOWLOG GET 看详情，keys 这类命令要直接禁用",
+        "slowlog-log-slower-than 单位是毫秒，设 10 就是 10 毫秒",
+        "慢日志会记录命令排队时间和网络往返时间",
+        "生产上把阈值设成 0 记录所有命令，是推荐做法"
+      ],
+      "answer": 0
+    },
+    "c05-q31": {
+      "options": [
+        "删除会阻塞主线程、迁移和主从同步会卡顿；用 unlink 或分批删，根本办法是拆分 key",
+        "大 key 只影响内存占用，对性能没影响",
+        "大 key 直接用 del 删最快，推荐这么干",
+        "大 key 只会出现在 string 类型上"
+      ],
+      "answer": 0
+    },
+    "c05-q32": {
+      "options": [
+        "partition 是并行和水平扩展的基础，offset 是分区内单调递增的序号，顺序只保证单分区内有序",
+        "Kafka 能保证全局有序，不管分了多少个 partition",
+        "offset 是整个 topic 的全局序号",
+        "一个 partition 可以被同一个消费组里的多个消费者同时消费"
+      ],
+      "answer": 0
+    },
+    "c05-q34": {
+      "options": [
+        "静态资源由 Nginx 直接返回并配 expires，只有动态请求才 proxy_pass 给 Tomcat",
+        "动静分离就是把所有请求都转给 Tomcat，让它统一处理",
+        "静态资源应该放在 Tomcat 里，Nginx 只负责转发",
+        "配了 location 就自动完成分离了，不需要配 expires"
       ],
       "answer": 0
     }
