@@ -5,8 +5,6 @@ const vm = require('vm');
 
 const ROOT = path.resolve(__dirname, '..');
 const HTML = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
-const APP = fs.readFileSync(path.join(ROOT, 'public/app.js'), 'utf8');
-const SRS_CODE = fs.readFileSync(path.join(ROOT, 'public/srs.js'), 'utf8');
 const DATA = path.join(ROOT, 'public/data');
 // 题库按章拆分，fetch 桩直接把 URL 里的文件名映射到磁盘
 const readData = (name) => JSON.parse(fs.readFileSync(path.join(DATA, name), 'utf8'));
@@ -19,7 +17,11 @@ if (OFFLINE) {
     name: 'offline-inline-' + i, code: m[1]
   }));
 } else {
-  SRC = [{ name: 'srs.js', code: SRS_CODE }, { name: 'app.js', code: APP }];
+  // 脚本清单和顺序以 index.html 为准：以后再加文件/拆文件，这里不用改
+  SRC = [...HTML.matchAll(/<script src="\.\/([^"]+\.js)"><\/script>/g)].map((m) => ({
+    name: m[1],
+    code: fs.readFileSync(path.join(ROOT, 'public', m[1]), 'utf8')
+  }));
 }
 
 let fail = 0;

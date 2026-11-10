@@ -185,11 +185,15 @@ function serveStatic(req, res, pathname) {
 
 /* 静态资源的版本号：取几个关键文件里最新的 mtime */
 function assetTag() {
-  const files = ['public/styles.css', 'public/app.js', 'public/srs.js'];
-  // 题库按章拆分，加一章就多一个文件，直接扫目录，免得漏了新章
+  const files = ['public/styles.css', 'public/srs.js'];
+  // 页面脚本 + 题库都是「加文件就生效」的，直接扫目录，免得漏新文件
   try {
-    const dir = path.join(ROOT, 'public', 'data');
-    for (const f of fs.readdirSync(dir)) {
+    for (const f of fs.readdirSync(path.join(ROOT, 'public', 'js'))) {
+      if (f.endsWith('.js')) files.push('public/js/' + f);
+    }
+  } catch (_) {}
+  try {
+    for (const f of fs.readdirSync(path.join(ROOT, 'public', 'data'))) {
       if (f.endsWith('.json')) files.push('public/data/' + f);
     }
   } catch (_) {}
@@ -208,7 +212,8 @@ function serveIndex(res) {
     }
     const tag = assetTag();
     const out = html
-      .replace(/(href|src)="\.\/(styles\.css|app\.js|srs\.js)"/g, `$1="./$2?v=${tag}"`)
+      .replace(/(href|src)="\.\/([^"?]+\.(?:css|js))"/g,
+        (m, attr, file) => `${attr}="./${file}?v=${tag}"`)
       .replace('</head>', `<meta name="build" content="${tag}" /></head>`);
     res.writeHead(200, {
       'Content-Type': 'text/html; charset=utf-8',

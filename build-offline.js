@@ -15,8 +15,8 @@ const read = (f) => fs.readFileSync(path.join(PUB, f), 'utf8');
 
 const html = read('index.html');
 const css = read('styles.css');
-const srs = read('srs.js');
-const app = read('app.js');
+// 页面脚本的顺序以 index.html 为准，这里照着它的 <script src> 逐个内联
+const scriptFiles = [...html.matchAll(/<script src="\.\/([^"]+\.js)"><\/script>/g)].map((m) => m[1]);
 // 题库按章拆分（index.json + chNN.json），离线版把它们合成一份
 const idx = JSON.parse(read(path.join('data', 'index.json')));
 const parts = idx.chapters.map((c) => JSON.parse(read(path.join('data', c.file))));
@@ -58,18 +58,22 @@ out = out.replace(
   () => '    <section class="view" id="view-home">\n' + banner
 );
 
-// 3) 内联题库 + 逻辑
+// 3) 内联题库 + 逻辑（脚本顺序照 index.html）
 const scripts = `
 <script>window.__QUIZ_BANK__ = ${safe(bank)};</script>
-<script>${safe(srs)}</script>
-<script>${safe(app)}</script>
+${scriptFiles.map((f) => '<script>\n' + safe(read(f)) + '\n</script>').join('\n')}
 `;
+let inlined = 0;
 out = out.replace(
-  '<script src="./srs.js"></script>\n<script src="./app.js"></script>',
-  () => scripts
+  /<script src="\.\/[^"]+\.js"><\/script>(\s*<script src="\.\/[^"]+\.js"><\/script>)*/,
+  () => { inlined++; return scripts; }
 );
+if (inlined !== 1) {
+  console.error('内联失败：没有匹配到连续的 <script src> 区块');
+  process.exit(1);
+}
 
-if (out.includes('src="./app.js"') || out.includes('href="./styles.css"')) {
+if (out.includes('src="./') || out.includes('href="./styles.css"')) {
   console.error('内联失败：替换没有全部命中');
   process.exit(1);
 }

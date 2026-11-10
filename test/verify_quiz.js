@@ -68,13 +68,64 @@ ok('有验收大题', (byKind.acceptance || 0) >= 3);
 ok('代码/命令题标记了需实机验证', bank.items.filter(i => i.kind === 'code').every(i => i.verify === true));
 
 /* ---------- 2. 前端引用 vs HTML ---------- */
-console.log('\n[2] app.js 引用的 DOM id 是否都存在于 index.html');
+console.log('\n[2] 前端引用的 DOM id 是否都存在于 index.html');
 const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
-const app = fs.readFileSync(path.join(ROOT, 'public/app.js'), 'utf8');
+const jsFiles = ['srs.js', ...fs.readdirSync(path.join(ROOT, 'public/js')).filter((f) => f.endsWith('.js')).map((f) => 'js/' + f)]
+  .filter((f) => fs.existsSync(path.join(ROOT, 'public', f)));
+const app = jsFiles.map((f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8')).join('\n');
 const htmlIds = new Set([...html.matchAll(/id="([^"]+)"/g)].map(m => m[1]));
 const refs = new Set([...app.matchAll(/\$\$?\('#([A-Za-z0-9_-]+)/g)].map(m => m[1]));
 const missing = [...refs].filter(r => !htmlIds.has(r));
-ok(`引用了 ${refs.size} 个 id`, missing.length === 0, '缺：' + missing.join(', '));
+ok(`扫了 ${jsFiles.length} 个脚本，引用了 ${refs.size} 个 id`, missing.length === 0, '缺：' + missing.join(', '));
+
+/* 2.1 拆分后的跨文件引用：A 文件用了 B 文件定义的名字，却没从 window.Q 上取。
+ * 这类错不会报语法错误，只会在某个功能跑到时才 ReferenceError，
+ * 而且往往被 try/catch 吞掉（同步失败就是这么来的），所以必须静态查一遍。 */
+function stripCode(src) {
+  let out = '';
+  let i = 0;
+  while (i < src.length) {
+    const c = src[i], n = src[i + 1];
+    if (c === '/' && n === '*') {
+      const e = src.indexOf('*/', i + 2);
+      i = e < 0 ? src.length : e + 2;
+    } else if (c === '/' && n === '/') {
+      const e = src.indexOf('\n', i);
+      i = e < 0 ? src.length : e;
+    } else if (c === "'" || c === '"' || c === '`') {
+      out += ' ';
+      i++;
+      while (i < src.length && src[i] !== c) { if (src[i] === '\\') i++; i++; }
+      i++;
+    } else { out += c; i++; }
+  }
+  return out;
+}
+
+const mods = fs.readdirSync(path.join(ROOT, 'public/js')).filter((f) => f.endsWith('.js'));
+const modInfo = {};
+for (const f of mods) {
+  const src = fs.readFileSync(path.join(ROOT, 'public/js', f), 'utf8');
+  const code = stripCode(src);
+  const defs = new Set([...code.matchAll(/^\s{2}(?:async\s+)?function\s+([\w$]+)|^\s{2}(?:const|let)\s+([\w$]+)/gm)]
+    .map((m) => m[1] || m[2]));
+  const header = /const \{ ([^}]+) \} = Q;/.exec(src);
+  const fromQ = new Set(header ? header[1].split(',').map((s) => s.trim()) : []);
+  const used = new Set([...code.matchAll(/(?<![\w$.])([A-Za-z_$][\w$]*)(?![\w$])/g)].map((m) => m[1]));
+  modInfo[f] = { defs, fromQ, used };
+}
+const owner = new Map();
+for (const f of mods) for (const d of modInfo[f].defs) if (!owner.has(d)) owner.set(d, f);
+const undef = [];
+for (const f of mods) {
+  const { defs, fromQ, used } = modInfo[f];
+  for (const n of used) {
+    if (owner.has(n) && owner.get(n) !== f && !defs.has(n) && !fromQ.has(n)) {
+      undef.push(f + ' 用了 ' + owner.get(n) + ' 的 ' + n);
+    }
+  }
+}
+ok(`拆分的 ${mods.length} 个文件没有漏取依赖`, undef.length === 0, undef.join('; '));
 
 /* ---------- 3. srs.js 逻辑 ---------- */
 console.log('\n[3] 间隔重复逻辑');

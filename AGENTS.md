@@ -16,7 +16,8 @@ node test/verify_app.js     # 前端集成（服务版），加 --offline 跑离
 
 ## 目录
 
-- `public/` 页面本体：`index.html` / `styles.css` / `app.js`（视图与交互）/ `srs.js`（纯函数：规则与队列）
+- `public/` 页面本体：`index.html` / `styles.css` / `srs.js`（纯函数：规则与队列）/ `js/`（页面脚本）
+- `public/js/` 按加载顺序：`core.js`（常量、state、工具、主题）→ `store.js`（事件存储、题库加载、同步）→ `home.js`（首页/章节）→ `quiz.js`（答题）→ `views.js`（浏览/统计/设置）→ `app.js`（事件绑定、启动）
 - `public/data/` 题库：`index.json`（章节清单）+ 每章一个 `chNN.json`（该章题目 + 该章选项）
 - `public/quiz-offline.html` **生成物**，别手改
 - `server.js` 静态托管 + `/api/ping` `/api/info` `/api/sync`
@@ -25,7 +26,7 @@ node test/verify_app.js     # 前端集成（服务版），加 --offline 跑离
 ## 这个项目特有的坑
 
 1. **改了 `public/` 里任何东西之后，必须 `node build-offline.js`。** 离线单文件版把 CSS/JS/题库全内嵌了，不重跑它就是旧的，而它又是发给手机的那份。
-2. **`build-offline.js` 里的 `replace` 必须用函数式写法。** 字符串替换里 `$&`、`$1`、`$$` 是特殊符号，`app.js` 的 `const $$` 会被吞成 `const $`，语法直接崩。
+2. **`build-offline.js` 里的 `replace` 必须用函数式写法。** 字符串替换里 `$&`、`$1`、`$$` 是特殊符号，`core.js` 的 `const $$` 会被吞成 `const $`，语法直接崩。
 3. **颜色只准写 CSS 变量。** 浅色主题只是覆盖 `styles.css` 顶部那批 `--bg` / `--surface` / `--accent`，规则里写死色值，深色下会漏一片。
 4. **答题状态不落库。** 页面只存答题事件，当前连击/到期/毕业全部由 `srs.js` 的 `deriveState` 重放算出。想要"记住某个状态"时，请改重放规则，不要另存一份状态——两份数据一定会分叉。
 5. **「这题现在能不能练」只有两个出处**：`SRS.buildQueue`（出队列）和 `SRS.chapterProgress`（章节行的"剩 N 题"）。`test/verify_quiz.js` 断言两者相等。页面里不要再自己写一遍 `st.seen && st.due <= now` 的过滤。
@@ -33,7 +34,8 @@ node test/verify_app.js     # 前端集成（服务版），加 --offline 跑离
 7. **`scenario` / `acceptance` 不出选择题**，就算章文件的 `mc` 里写了也不会用——选项等于把答案提前给了。
 8. **加题只改对应章的 `chNN.json`，新增章才去动 `index.json`。** 题放错文件、选项放错章，`test/verify_quiz.js` 会按 `id` 前缀和 `ch` 字段拦下来。
 9. **`sw.js` 必须保持「先网络、失败再回缓存」。** 缓存优先会让页面一直拿旧的题库（`?v=` 版本号对 SW 缓存无效，它按 URL 命中），加完一章刷新还是老样子，很难查。改 `sw.js` 记得把 `CACHE` 版本号 +1。
-10. `server.js` 只用 Node 内置模块。**不要为了一个功能引入打包工具或框架**，手机用局域网 HTTP 打开，越简单越不容易坏。
+10. **`public/js/` 里的文件不是普通脚本，它们通过 `window.Q` 通信。** 每个文件是一个 IIFE：前面文件的函数在头部解构出来用（`const { state, $ } = Q;`），后面文件的东西必须写成 `Q.xxx()` 在调用时才取。漏了不会报语法错，只会在跑到那行时 ReferenceError，还经常被 try/catch 吞掉（同步失败就是这么被藏住的）——`test/verify_quiz.js` 会静态扫一遍，加文件后记得跑。
+11. `server.js` 只用 Node 内置模块。**不要为了一个功能引入打包工具或框架**，手机用局域网 HTTP 打开，越简单越不容易坏。
 
 ## 提交
 
