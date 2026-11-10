@@ -42,7 +42,7 @@
 
 `http://局域网IP` 属于「不安全上下文」，浏览器不允许注册 Service Worker，所以**手机上没法离线缓存**。
 
-为此提供了一个**离线单文件版**：`public/quiz-offline.html`（75 KB，题库已经内嵌进去）。
+为此提供了一个**离线单文件版**：`public/quiz-offline.html`（题库和代码已经一起内嵌进去，所以它比较大）。
 
 1. 在电脑上把这个文件发到手机（微信传文件 / 邮件 / 数据线都行）；
 2. 手机上用浏览器打开它（iOS 用 Safari → 从「文件」App 打开；Android 用系统浏览器 / Chrome）；
@@ -61,7 +61,7 @@ node build-offline.js
 - 手机/浏览器：IndexedDB（不可用时自动退回 localStorage）
 - 设置页有「导出记录」，建议每周导一次到 `qa-practice` 仓库
 
-记录是**只追加的事件**（每题一条：`id / item / ts / k`），当前状态由事件重放算出。
+记录是**只追加的事件**（每题一条：`id / item / ts / k / dev`），当前状态由事件重放算出。
 好处是两端合并只要取并集，永远不冲突；以后改评分规则也能重放历史。
 
 ## 外观
@@ -135,11 +135,15 @@ node build-offline.js
 
 ## 自测
 
+改完代码或题库，跑这两套（都在本仓库里，不需要额外依赖）：
+
 ```bash
-node ../_work/verify_quiz.js          # 题库完整性 + 间隔重复逻辑
-node ../_work/verify_app.js           # 前端集成（服务版）
-node ../_work/verify_app.js --offline # 前端集成（离线单文件版）
+node test/verify_quiz.js          # 题库完整性 + 间隔重复逻辑 + 章节口径
+node test/verify_app.js           # 前端集成（服务版）
+node test/verify_app.js --offline # 前端集成（离线单文件版）
 ```
+
+改了 `public/` 下任何前端文件后，先 `node build-offline.js` 再跑 `--offline` 那一条。
 
 ## 已知限制
 

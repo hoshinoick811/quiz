@@ -17,6 +17,7 @@
   const state = {
     items: [],
     byId: {},
+    chapters: [],
     events: [],
     states: {},
     mc: {},
@@ -330,14 +331,13 @@
 
   /* ================= 记录事件 ================= */
 
-  async function record(itemId, kind, note) {
+  async function record(itemId, kind) {
     const ev = {
       id: uid(),
       item: itemId,
       ts: Date.now(),
       k: kind,
-      dev: deviceName(),
-      note: note || ''
+      dev: deviceName()
     };
     await dbPut(ev);
     state.events.push(ev);
@@ -365,20 +365,15 @@
   }
 
   function renderHome() {
-    const now = Date.now();
     const total = state.items.length;
-    let grad = 0, learned = 0, wrong = 0, fresh = 0;
-    for (const it of state.items) {
-      const st = state.states[it.id];
-      if (st.graduated) grad += 1;
-      if (st.seen) learned += 1;
-      if (st.seen && !st.graduated) wrong += 1;
-      if (!st.seen) fresh += 1;
-    }
-    const dueCount = state.items.filter((it) => {
-      const st = state.states[it.id];
-      return st.seen && !st.graduated && st.due <= now;
-    }).length;
+    // 首页这四个数字不自己算：章节行是唯一统计来源，求和即可
+    const rows = chapterRows();
+    const sum = (key) => rows.reduce((s, r) => s + r[key], 0);
+    const grad = sum('grad');
+    const learned = sum('learned');
+    const wrong = sum('wrong');
+    const fresh = sum('fresh');
+    const dueCount = sum('due');
 
     const q = queuePreview();
     $('#queueCount').innerHTML = q.length + '<span>题</span>';
@@ -403,7 +398,7 @@
       ? (fresh === 0 && wrong === 0 ? '这一章已经全部毕业 🎉' : '今天已完成，明天再来')
       : `开始今天 ${q.length} 题`;
 
-    renderHomeChapters();
+    renderHomeChapters(rows);
   }
 
   /* ---------- 章节 ---------- */
@@ -427,6 +422,13 @@
     return c ? c.title : '第 ' + ch + ' 章';
   }
 
+  /* 各章进度行：首页数字、章节行、题库页标题都从这一份数据取 */
+  function chapterRows() {
+    return SRS.chapterProgress(state.items, state.states, {
+      maxSession: state.settings.maxPerSession
+    });
+  }
+
   /* 每章最近一次答题时间，用来把「最近在学的」排前面 */
   function chapterLastActive() {
     const map = {};
@@ -438,21 +440,8 @@
     return map;
   }
 
-  /* 这一章还能练几道：到期 + 没做过，封顶单次上限 */
-  function chapterRemaining(ch) {
-    const now = Date.now();
-    let n = 0;
-    for (const it of state.items) {
-      if (it.ch !== ch) continue;
-      const st = state.states[it.id];
-      if (!st || st.graduated) continue;
-      if (!st.seen || st.due <= now) n += 1;
-    }
-    return Math.min(n, state.settings.maxPerSession || 12);
-  }
-
-  function renderHomeChapters() {
-    const rows = SRS.chapterProgress(state.items, state.states);
+  function renderHomeChapters(rows) {
+    rows = (rows || chapterRows()).slice();
     const last = chapterLastActive();
     rows.sort((a, b) => {
       const la = last[a.ch] || 0;
@@ -466,7 +455,7 @@
 
     $('#chapterList').innerHTML = shown.map((r) => {
       const pct = r.total ? Math.round((r.grad / r.total) * 100) : 0;
-      const left = chapterRemaining(r.ch);
+      const left = r.left;
       const tail = left ? '剩 ' + left + ' 题' : '已毕业';
       return `<button type="button" class="chap-row clickable" data-ch="${r.ch}">
         <div class="chap-top">
@@ -488,17 +477,13 @@
     }
   }
 
-  function renderChapters(sel, withStats) {
-    const rows = SRS.chapterProgress(state.items, state.states);
-    const chapName = (ch) => {
-      const c = (state.chapters || []).find((x) => x.id === ch);
-      return c ? c.title : '第 ' + ch + ' 章';
-    };
+  function renderChapters(sel) {
+    const rows = chapterRows();
     $(sel).innerHTML = rows.map((r) => {
       const pct = r.total ? Math.round((r.grad / r.total) * 100) : 0;
       return `<div class="chap-row">
         <div class="chap-top">
-          <span class="chap-name">${chapName(r.ch)}</span>
+          <span class="chap-name">${escapeHtml(chapName(r.ch))}</span>
           <span class="chap-num">${r.grad}/${r.total} 毕业 · ${pct}%</span>
         </div>
         <div class="bar-track"><div class="bar-fill warm" style="width:${pct}%"></div></div>
@@ -583,7 +568,7 @@
     $('#btnReveal').disabled = false;
     $('#btnNext').hidden = true;
 
-    state.quiz = { useMC: false, answered: false, mc: null, order: null };
+    state.quiz = { useMC: false, answered: false, mc: null };
     setupChoices(it);
 
     const st = state.states[it.id] || {};
@@ -641,7 +626,6 @@
     }
 
     const order = shuffleSeeded(mc.options.map((_, i) => i), hashStr(it.id));
-    state.quiz.order = order;
     box.innerHTML = order.map((orig, pos) =>
       '<button type="button" class="opt" data-orig="' + orig + '">'
       + '<span class="mark">' + 'ABCD'[pos] + '</span>'
@@ -800,7 +784,6 @@
     const done = s ? s.index : 0;
     const r = s ? s.results : { good: 0, half: 0, again: 0 };
 
-    const colors = ['✓', '●', '○'];
     $('#doneEmoji').textContent = r.again > r.good ? '💪' : '✓';
     $('#doneTitle').textContent = done ? '这一轮跑完了' : '没有题目';
     $('#doneSub').textContent = done
@@ -854,12 +837,11 @@
   /* 题库页：按章折叠，默认全收起，筛选作用在所有章上 */
   function renderBrowse() {
     const f = state.browseFilter;
+    const progress = new Map(chapterRows().map((r) => [r.ch, r]));
     const html = groupItems(state.items, 'ch').map(([ch, items]) => {
       const list = items.filter((it) => browseMatch(it, f));
       if (!list.length) return '';
-      const row = SRS.chapterProgress(items, state.states)[0] || {
-        total: items.length, grad: 0, wrong: 0
-      };
+      const row = progress.get(ch) || { total: items.length, grad: 0, wrong: 0 };
       return `<details class="chap-drawer" data-ch="${ch}">
         <summary>
           <span class="chap-name">${escapeHtml(chapName(ch))}</span>
@@ -894,7 +876,7 @@
       range.textContent = `${first} – ${last}`;
     }
 
-    renderChapters('#chapterStats', true);
+    renderChapters('#chapterStats');
 
     $('#evCount').textContent = state.events.length;
     const sorted = state.events.slice().sort((a, b) => a.ts - b.ts);

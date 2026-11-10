@@ -86,9 +86,7 @@ html[data-theme="light"] {
 .answer li, .brow-body li, .opt .otext, .hint, .kv b, .qtext, .follow li {
   overflow-wrap: anywhere;
 }
-html, body { overflow-x: hidden; }
-
-html, body { margin: 0; padding: 0; }
+html, body { margin: 0; padding: 0; overflow-x: hidden; }
 
 body {
   background: var(--bg);

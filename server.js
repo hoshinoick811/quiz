@@ -70,8 +70,7 @@ function normalizeEvent(e) {
     item,
     ts: Math.floor(ts),
     k,
-    dev: typeof e.dev === 'string' ? e.dev.slice(0, 16) : 'unknown',
-    note: typeof e.note === 'string' ? e.note.slice(0, 500) : ''
+    dev: typeof e.dev === 'string' ? e.dev.slice(0, 16) : 'unknown'
   };
 }
 
@@ -243,10 +242,6 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
-  if (p === '/api/events') {
-    return json(res, 200, { ok: true, events: readEvents() });
-  }
-
   if (p === '/api/sync') {
     if (req.method !== 'POST') return json(res, 405, { ok: false, error: 'method not allowed' });
     try {
@@ -258,17 +253,6 @@ const server = http.createServer(async (req, res) => {
     } catch (err) {
       return json(res, 400, { ok: false, error: String(err.message || err) });
     }
-  }
-
-  if (p === '/api/export') {
-    const events = readEvents();
-    const body = JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), events }, null, 2);
-    res.writeHead(200, {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Content-Disposition': `attachment; filename="quiz-events-${new Date().toISOString().slice(0, 10)}.json"`,
-      'Content-Length': Buffer.byteLength(body)
-    });
-    return res.end(body);
   }
 
   if (p.startsWith('/api/')) return json(res, 404, { ok: false, error: 'unknown api' });

@@ -1,0 +1,65 @@
+#!/bin/sh
+# 提交前检查：单个文件超过 5000 token（按 字节 ÷ 4 算，约 20 KB）就拦下。
+# 为什么：文件一大，agent 每次要读的东西就变多，改东忘西。
+# 装法：git config core.hooksPath .githooks（克隆后跑一次）
+# 机器生成的、二进制、锁文件不查；已经超标的文件本次放行，只提醒。
+
+LIMIT=20000
+ROOT=$(git rev-parse --show-toplevel) || exit 0
+TMP=$(mktemp) || exit 0
+trap 'rm -f "$TMP"' EXIT
+
+git diff --cached --name-only --diff-filter=ACMR > "$TMP" || exit 0
+
+blocked=""
+warned=""
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  case "$f" in
+    # 二进制 / 资源：字节数换算成 token 没意义
+    *.png|*.jpg|*.jpeg|*.gif|*.webp|*.ico|*.svg|*.ttf|*.woff|*.woff2|*.pdf|*.docx|*.xlsx|*.zip) continue ;;
+    # 锁文件：工具生成，拆不了
+    package-lock.json|pnpm-lock.yaml|yarn.lock|*.lock) continue ;;
+    # 构建产物：build-offline.js 生成，改前端后重跑，不要手改
+    public/quiz-offline.html) continue ;;
+  esac
+
+  size=$(git cat-file -s ":$f" 2>/dev/null) || continue
+  if [ "$size" -le "$LIMIT" ]; then continue; fi
+
+  kb=$((size / 1024))
+  head_size=$(git cat-file -s "HEAD:$f" 2>/dev/null) || head_size=0
+  if [ "$head_size" -gt "$LIMIT" ]; then
+    # 这次大扫除之前就已经超标的，先放行，否则连改个错别字都提交不了
+    if [ "$size" -gt "$head_size" ]; then
+      warned="$warned
+    $f  ${kb} KB（原本 $((head_size / 1024)) KB，又长了 $(( (size - head_size) / 1024 )) KB）"
+    else
+      warned="$warned
+    $f  ${kb} KB"
+    fi
+  else
+    blocked="$blocked
+    $f  ${kb} KB"
+  fi
+done < "$TMP"
+
+if [ -n "$warned" ]; then
+  echo "提示：以下文件本来就超过 5000 token，这次放行，但请别再往里加东西了："
+  printf '%s\n' "$warned"
+  echo ""
+fi
+
+if [ -n "$blocked" ]; then
+  echo "提交被拦下：下面这些文件超过 5000 token（约 20 KB）："
+  printf '%s\n' "$blocked"
+  echo ""
+  echo "文件一大，下次 agent 就得整份读进来。按功能拆成几个文件再提交"
+  echo "（例如主逻辑 / 存储 / 视图分开），或把细节挪到它自己的文件里。"
+  echo "如果它是机器生成的，在 .githooks/pre-commit 的跳过列表里加一行。"
+  echo ""
+  echo "确实要硬提交：git commit --no-verify"
+  exit 1
+fi
+
+exit 0

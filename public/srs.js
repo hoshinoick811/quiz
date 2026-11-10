@@ -157,19 +157,33 @@
     return out;
   }
 
-  /** 每章进度 */
-  function chapterProgress(items, states) {
+  /** 每章进度。一道题算「新题 / 到期 / 已毕业」，只在这里判定，页面各处都从这取。
+   *  left = 这一章现在还能练几道，和 buildQueue 的 chapter 模式同一口径（测试里断言相等）。
+   */
+  function chapterProgress(items, states, opts) {
+    opts = opts || {};
+    const now = opts.now || Date.now();
+    const maxSession = opts.maxSession || 12;
     const map = new Map();
     for (const it of items) {
-      if (!map.has(it.ch)) map.set(it.ch, { ch: it.ch, total: 0, grad: 0, learned: 0, wrong: 0 });
+      if (!map.has(it.ch)) {
+        map.set(it.ch, { ch: it.ch, total: 0, grad: 0, learned: 0, wrong: 0, fresh: 0, due: 0 });
+      }
       const row = map.get(it.ch);
-      const st = states[it.id];
       row.total += 1;
-      if (st.graduated) row.grad += 1;
+      const st = states[it.id];
+      if (!st) { row.fresh += 1; continue; }
       if (st.seen) row.learned += 1;
-      if (st.seen && !st.graduated) row.wrong += 1;
+      if (st.graduated) { row.grad += 1; continue; }
+      if (!st.seen) row.fresh += 1;
+      else {
+        row.wrong += 1;
+        if (st.due <= now) row.due += 1;
+      }
     }
-    return [...map.values()].sort((a, b) => a.ch - b.ch);
+    return [...map.values()]
+      .map((r) => Object.assign(r, { left: Math.min(r.due + r.fresh, maxSession) }))
+      .sort((a, b) => a.ch - b.ch);
   }
 
   global.SRS = {
