@@ -1,21 +1,21 @@
 {
   "version": 1,
-  "generated": "2026-10-29",
   "chapters": [
     {
       "id": 1,
-      "title": "Linux 基础篇",
-      "short": "Linux 基础"
+      "title": "Linux 基础篇"
     },
     {
       "id": 2,
-      "title": "网络篇",
-      "short": "网络"
+      "title": "网络篇"
     },
     {
       "id": 3,
-      "title": "Linux 系统服务篇",
-      "short": "系统服务"
+      "title": "Linux 系统服务篇"
+    },
+    {
+      "id": 4,
+      "title": "SHELL 编程篇"
     }
   ],
   "items": [
@@ -1713,6 +1713,440 @@
       ],
       "follow": [
         "为什么建议 HSTS 的 max-age 先设小一点再逐步加长？"
+      ]
+    },
+    {
+      "id": "c04-q01",
+      "ch": 4,
+      "kind": "code",
+      "level": 3,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "脚本",
+        "用户管理"
+      ],
+      "q": "写一个脚本，实现批量添加 20 个用户，用户名为 user01-20，密码为 user 后面跟 5 个随机字符",
+      "a": [
+        "循环：for i in {1..20}，用 printf 补零生成 user01…user20",
+        "补零写法：u=$(printf 'user%02d' $i)——比原文用 if 判断 i<=9 更简洁可靠",
+        "随机密码：pwd=user$(echo $RANDOM | md5sum | cut -c1-5)",
+        "建用户：useradd -m $u；设密码：echo \"$u:$pwd\" | chpasswd（RHEL 也可用 passwd --stdin）",
+        "密码必须 tee 到文件保存，否则设完自己都不知道密码",
+        "生产还要加：先 id $u &>/dev/null 判断是否存在，避免重复创建报错",
+        "原文的 $RANDOM|md5sum|cut -c1-5 取到的是 16 进制字符，符合「随机字符」要求"
+      ],
+      "follow": [
+        "为什么 printf %02d 比 if 判断更可靠？"
+      ]
+    },
+    {
+      "id": "c04-q02",
+      "ch": 4,
+      "kind": "code",
+      "level": 2,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "脚本",
+        "find"
+      ],
+      "q": "编写脚本清理指定目录的空白普通文件",
+      "a": [
+        "读目录：read -p 交互输入，或用 $1 传参（脚本更通用）",
+        "找空文件：find \"$path\" -type f -empty 最直接",
+        "等价判断：[ ! -s \"$file\" ] 表示文件大小为 0",
+        "安全做法：先 mv 到 /tmp 缓冲，几天后再删，避免误删",
+        "变量必须加引号，否则路径含空格就炸",
+        "加 -maxdepth 限制层数，避免误清整个磁盘"
+      ],
+      "follow": [
+        "find -empty 和 [ ! -s ] 判断结果一定一致吗？"
+      ]
+    },
+    {
+      "id": "c04-q03",
+      "ch": 4,
+      "kind": "code",
+      "level": 3,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "脚本",
+        "网络"
+      ],
+      "q": "写一个脚本，判断 192.168.1.0/24 网络里当前在线的 IP 有哪些，能 ping 通即认为在线",
+      "a": [
+        "循环 1..254：for i in {1..254}",
+        "探测：ping -c1 -W1 192.168.1.$i &>/dev/null",
+        "判断：$? -eq 0 则在线，把结果分别写进 up/down 两个文件",
+        "关键性能点：每次 ping 必须后台 & 执行，最后 wait 收尾；否则 254 台串行要十几分钟",
+        "更专业的做法：fping -a -g 192.168.1.0/24 或 nmap -sn 192.168.1.0/24",
+        "注意 ICMP 可能被防火墙禁，ping 不通不代表主机不在线"
+      ],
+      "follow": [
+        "为什么串行 ping 254 个地址会很慢？"
+      ]
+    },
+    {
+      "id": "c04-q04",
+      "ch": 4,
+      "kind": "code",
+      "level": 3,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "awk",
+        "日志统计"
+      ],
+      "q": "统计网站访问 IP 的数量及 PV 量",
+      "a": [
+        "独立 IP 数：awk '{print $1}' access.log | sort -u | wc -l",
+        "每 IP 访问次数 TOP10：awk '{print $1}' access.log | sort | uniq -c | sort -nr | head -10",
+        "PV（总请求数）：wc -l access.log",
+        "某天 PV：grep '07/Aug/2019' access.log | wc -l",
+        "原文用 ss -an 数连接数，那是在线并发连接，不是历史 PV，两者别混",
+        "补充：UV 严格说要按 cookie/用户算，按 IP 去重只是近似"
+      ],
+      "follow": [
+        "PV 和 UV 的区别是什么？"
+      ]
+    },
+    {
+      "id": "c04-q05",
+      "ch": 4,
+      "kind": "code",
+      "level": 5,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "脚本",
+        "日志",
+        "rsync"
+      ],
+      "q": "编写脚本对 web 服务器访问日志进行清理，保留 3 天以内，3 天以前的转储到另一台日志服务器",
+      "a": [
+        "定义变量：日志目录 log_dir、临时目录 log_tmp_dir、远端日志服务器 IP",
+        "取本机标识：host=$(hostname -I | awk '{print $1}') 或 ifconfig 取 IP",
+        "找 3 天前：find ./ -daystart -mtime +3",
+        "打包：tar -uf $log_tmp_dir/${host}_$(date +%F).tar {} \\;（-u 是追加，同一天多次跑不会覆盖）",
+        "删源文件：find ./ -daystart -mtime +3 -delete",
+        "推远端：rsync -a ./ $remote:/$host（前提是配了免密）",
+        "crontab：20 04 * * * bash clean_log.sh &>/dev/null",
+        "原文风险：tar 和 delete 是两条独立命令，tar 失败照样会删——必须加 [ $? -eq 0 ] && 再删"
+      ],
+      "follow": [
+        "为什么 tar 失败后仍然删除源文件是致命 bug？"
+      ]
+    },
+    {
+      "id": "c04-q06",
+      "ch": 4,
+      "kind": "code",
+      "level": 2,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "脚本",
+        "字符串处理"
+      ],
+      "q": "编写脚本将当前目录所有文件扩展名改为 log",
+      "a": [
+        "循环：for f in *.*（只匹配带扩展名的）",
+        "改后缀：mv \"$f\" \"${f%.*}.log\"",
+        "${f%.*} 表示从右边删掉最短匹配的「.后缀」，即去掉最后一个 . 及之后",
+        "变量加引号，防止文件名含空格",
+        "先判断是否已经是 .log，避免重复改名",
+        "原文用 ls | grep -P 再塞进 for，遇到特殊文件名不可靠，直接用通配符更稳"
+      ],
+      "follow": [
+        "${f%.*} 和 ${f%%.*} 的结果差在哪？"
+      ]
+    },
+    {
+      "id": "c04-q07",
+      "ch": 4,
+      "kind": "code",
+      "level": 5,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "脚本",
+        "LNMP"
+      ],
+      "q": "编写脚本部署 LNMP 环境（说出结构和关键步骤）",
+      "a": [
+        "结构：main / init / install_nginx / install_php / install_mysql / menu，配 while + case 做交互菜单",
+        "init：建 nginx、mysql 运行用户（-s /sbin/nologin -M），yum 装依赖（pcre-devel、openssl-devel、libxml2-devel 等）",
+        "nginx：解压 → ./configure --prefix=/usr/local/nginx --user=nginx --with-http_ssl_module → make && make install",
+        "php：./configure --enable-fpm --with-fpm-user=nginx → make install → 复制 php.ini、php-fpm.conf 模板",
+        "mysql：glibc 包解压 → chown → mysqld --initialize 初始化（初始密码在日志最后一行）→ 写 my.cnf → 启动",
+        "每步都要判断 $? 并输出结果，失败要能停",
+        "生产要补的：set -euo pipefail、幂等（已装则跳过）、失败回滚、执行日志"
+      ],
+      "follow": [
+        "为什么这个脚本直接跑在生产机器上很危险？"
+      ]
+    },
+    {
+      "id": "c04-q08",
+      "ch": 4,
+      "kind": "code",
+      "level": 3,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "脚本",
+        "磁盘",
+        "告警"
+      ],
+      "q": "写一个自动检测磁盘使用率的脚本，当磁盘使用达到 90% 以上时发邮件给相关人员",
+      "a": [
+        "取使用率：df -h | awk '{print $5}' | grep -o '[0-9]\\+' 去百分号",
+        "循环判断：[ $i -ge 90 ] && 发信",
+        "发信：echo 内容 | mail -s 主题 收件人（需要 mailx 且 MTA 配好）",
+        "更稳的取法：df -P（避免设备名太长导致换行错位），并排除 tmpfs",
+        "用 awk 直接比数值更简洁：df -P | awk 'NR>1 && $5+0>=90 {print $6, $5}'",
+        "生产上通常接 Prometheus + Alertmanager 或钉钉/企微机器人，比 mail 可靠"
+      ],
+      "follow": [
+        "df -h 解析使用率时为什么可能算错？df -P 解决了什么？"
+      ]
+    },
+    {
+      "id": "c04-q09",
+      "ch": 4,
+      "kind": "code",
+      "level": 4,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "脚本",
+        "内存"
+      ],
+      "q": "写一个脚本监控系统内存和交换分区使用情况",
+      "a": [
+        "取数据：free -m | sed -nr '/Mem|Swap/p'",
+        "算比例：剩余/总量 × 100，低于阈值就告警",
+        "注意应该看 available 列，而不是 free 列——free 不含可回收的缓存",
+        "swap 使用率高通常代表物理内存不足，要连带看内存",
+        "更精确的数据源：/proc/meminfo",
+        "改动 IFS 记得改回去（OIFS=$IFS 备份），否则影响后续解析"
+      ],
+      "follow": [
+        "free 里的 available 和 free 差在哪？"
+      ]
+    },
+    {
+      "id": "c04-q10",
+      "ch": 4,
+      "kind": "code",
+      "level": 3,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "脚本",
+        "时间"
+      ],
+      "q": "写一个倒计时脚本，显示离指定日期的凌晨 0 点还有多少天、多少时、多少分、多少秒",
+      "a": [
+        "目标时间戳：goal=$(date +%s -d 2020-10-01)",
+        "当前时间戳：now=$(date +%s)",
+        "差值拆分：day=差/86400、hour=差%86400/3600、minute=差%3600/60、second=差%60",
+        "循环：while true + sleep 1 刷新，差值到 0 就 break",
+        "算术展开用 $(( ))；原文的 $[ ] 是已废弃写法",
+        "date -d 是解析日期，date -s 是设置系统时间，别混"
+      ],
+      "follow": [
+        "date -d 和 date -s 分别做什么？"
+      ]
+    },
+    {
+      "id": "c04-q11",
+      "ch": 4,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "shell",
+        "变量"
+      ],
+      "q": "shell 中 $0 $1 $# $@ $* $? 分别代表什么",
+      "a": [
+        "$0：脚本本身的名字",
+        "$1：第一个位置参数（$2 是第二个，以此类推）",
+        "$#：传入参数的个数",
+        "$@：所有参数，每个参数独立——\"$@\" 展开成多个词",
+        "$*：所有参数作为一个整体字符串——\"$*\" 展开成一个词",
+        "$?：上一条命令的退出状态码，0 成功，非 0 失败"
+      ],
+      "follow": [
+        "\"$@\" 和 \"$*\" 在循环里遍历时结果差在哪？"
+      ]
+    },
+    {
+      "id": "c04-q12",
+      "ch": 4,
+      "kind": "code",
+      "level": 4,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "awk",
+        "sed"
+      ],
+      "q": "awk、sed 的核心作用是什么，写出统计 access.log 中 200、404、502 状态码数量的命令",
+      "a": [
+        "awk：按行读、按列切，擅长统计、计算、格式化输出",
+        "sed：流式编辑器，擅长按行替换、删除、插入",
+        "统计全部状态码：awk '{print $9}' access.log | sort | uniq -c",
+        "只统计三种码：awk '$9==200||$9==404||$9==502{c[$9]++} END{for(k in c) print k, c[k]}' access.log",
+        "sed 常用：sed -i 's/old/new/g' 文件；sed -n '1,10p' 看前 10 行",
+        "awk 的 END 块只在读完文件后执行一次，做汇总就靠它"
+      ],
+      "follow": [
+        "awk '{print $9}' 和 grep 统计状态码，哪个更不容易出错？"
+      ]
+    },
+    {
+      "id": "c04-q13",
+      "ch": 4,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "shell",
+        "健壮性"
+      ],
+      "q": "shell 脚本 set -e、set -u、set -o pipefail 的作用是什么，生产脚本为什么建议加上",
+      "a": [
+        "set -e：任何命令返回非 0，脚本立即退出",
+        "set -u：使用未定义变量时报错退出，防止变量为空导致误操作（如 rm -rf $DIR/ 变成 rm -rf /）",
+        "set -o pipefail：管道中任意一段失败，整个管道就返回失败；不加的话只看最后一条命令的结果",
+        "三者合起来写 set -euo pipefail，是生产脚本的标配开头",
+        "注意：set -e 在 if 条件、&& || 链里不会触发，所以别以为加了就万无一失"
+      ],
+      "follow": [
+        "为什么说 set -e 有时候「不生效」？"
+      ]
+    },
+    {
+      "id": "c04-q14",
+      "ch": 4,
+      "kind": "code",
+      "level": 3,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "脚本",
+        "进程监控"
+      ],
+      "q": "写 shell 脚本：监控 nginx 进程不存在就自动重启，并记录日志",
+      "a": [
+        "判断进程：pgrep nginx >/dev/null 或 systemctl is-active nginx",
+        "不在就拉起：systemctl start nginx（老系统用 /usr/local/nginx/sbin/nginx）",
+        "记日志：echo \"$(date '+%F %T') nginx down, restart\" >> /var/log/check_nginx.log",
+        "定时：crontab 每分钟执行一次（* * * * *）",
+        "更好的是让 systemd 自己管：service 里写 Restart=always + RestartSec，比外部轮询可靠",
+        "脚本要加锁（flock）防止两次执行同时拉起导致冲突"
+      ],
+      "follow": [
+        "用 cron 轮询和用 systemd Restart=always，哪个更可靠？"
+      ]
+    },
+    {
+      "id": "c04-q15",
+      "ch": 4,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "shell",
+        "语法"
+      ],
+      "q": "简述 bash 中 (())、[ ]、[[ ]] 的区别",
+      "a": [
+        "(( ))：算术运算，里面不用写 $，结果用返回值表示真假，如 (( i++ ))",
+        "[ ]：POSIX 标准的 test 命令，字符串/数字比较，运算符两边必须有空格",
+        "[ ] 是真正的命令，所以可以用 $? 取结果；写 [[ ]] 时则是 bash 关键字",
+        "[[ ]]：bash 增强版，支持 =~ 正则、&& || 逻辑、不做分词，变量不引号也安全",
+        "生产脚本优先用 [[ ]]，但 #!/bin/sh 的脚本不能用"
+      ],
+      "follow": [
+        "[[ ]] 里变量不加引号会出问题吗？为什么？"
+      ]
+    },
+    {
+      "id": "c04-a01",
+      "ch": 4,
+      "kind": "acceptance",
+      "level": 3,
+      "src": "written",
+      "tag": [
+        "验收",
+        "脚本骨架"
+      ],
+      "q": "【验收一】写一个「生产级脚本骨架」，并逐段说明为什么每个部分都需要。",
+      "a": [
+        "开头：#!/usr/bin/env bash + set -euo pipefail",
+        "常量区：把路径、超时、阈值都提成变量，不要散落在正文里",
+        "日志函数：log() 统一输出到文件和屏幕，带时间戳",
+        "trap：trap 'cleanup' EXIT INT TERM，异常退出也能收拾现场（删临时文件、释放锁）",
+        "参数校验：检查 $# 和 $1 是否为空，不对就打印 usage 退出 1",
+        "主流程用函数拆开，main 只负责调用顺序",
+        "退出码要有意义：0 成功、非 0 表示具体失败原因，方便 cron 和监控判断"
+      ],
+      "follow": [
+        "trap 里清理临时文件，为什么能避免磁盘被撑满？"
+      ]
+    },
+    {
+      "id": "c04-a02",
+      "ch": 4,
+      "kind": "acceptance",
+      "level": 4,
+      "src": "written",
+      "tag": [
+        "验收",
+        "日志治理"
+      ],
+      "q": "【验收二】需求：日志保留 30 天；但每月 1 号的日志要永久保留；只处理 .log 文件。写出你的实现思路和风险点。",
+      "a": [
+        "定位：find /var/log/app -type f -name '*.log' -mtime +30",
+        "排除每月 1 号：用 -newermt 或按文件名过滤，把 xx-01 这类排除掉",
+        "更好的思路：先按日期归档（每月 1 号改名成 monthly/），再做清理，规则更清晰",
+        "删除要安全：先 -print 出来看一遍（dry-run），确认无误再加 -delete",
+        "必须防误删：路径写死不要用变量拼接 rm -rf，加 set -u 兜底",
+        "体积控制：真删之前先压缩归档，能省一半空间且留证据",
+        "要有日志：删了哪些、删了多少，写进操作日志，出问题能回溯"
+      ],
+      "follow": [
+        "为什么建议先 -print 再 -delete？"
+      ]
+    },
+    {
+      "id": "c04-a03",
+      "ch": 4,
+      "kind": "acceptance",
+      "level": 5,
+      "src": "written",
+      "tag": [
+        "验收",
+        "上线自查"
+      ],
+      "q": "【验收三】一个脚本在测试机跑得好好的，上生产就出错甚至误删文件。请列出你的上线前自查清单。",
+      "a": [
+        "安全开关：开头 set -euo pipefail；危险操作加 --dry-run 或确认提示",
+        "变量：所有可能为空的变量加默认值（${DIR:-}）并判空，路径全部加引号",
+        "相对路径：全部换成绝对路径，cron 执行时工作目录和自己敲命令不一样",
+        "权限与身份：确认执行用户是谁，cron 的环境变量 PATH 往往比登录 shell 少",
+        "幂等性：重复执行结果一致（mkdir -p、已存在则跳过）",
+        "并发：加 flock，防止上一轮没跑完下一轮又起来",
+        "可观测：输出日志 + 退出码，接监控告警",
+        "回滚：先备份或在副本上验证，删改前留退路"
+      ],
+      "follow": [
+        "cron 里跑的脚本为什么常见「命令找不到」？怎么解决？"
       ]
     }
   ]

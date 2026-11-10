@@ -514,6 +514,141 @@
         "用来给证书做自动续期"
       ],
       "answer": 0
+    },
+    "c04-q01": {
+      "options": [
+        "for i in {1..20} 配合 printf 'user%02d' 补零，密码用 $RANDOM|md5sum|cut -c1-5 生成，最后 tee 到文件保存",
+        "手写 20 条 useradd 命令，密码直接设成固定值 user12345",
+        "用 for 循环但密码用 $RANDOM 直接当密码，不需要存文件",
+        "用 while 读 /etc/passwd 判断用户是否存在，再批量改密码"
+      ],
+      "answer": 0
+    },
+    "c04-q02": {
+      "options": [
+        "find \"$path\" -type f -empty，找到后先 mv 到 /tmp 缓冲，过几天再删",
+        "find $path -type d -empty -delete 直接删空目录",
+        "rm -rf $path/* 然后重建目录",
+        "du -s $path 判断为空后删除整个目录"
+      ],
+      "answer": 0
+    },
+    "c04-q03": {
+      "options": [
+        "for 循环 1..254，ping -c1 -W1 并加 & 并发执行，最后 wait 收结果",
+        "for 循环里串行 ping -c1，等每个回来再下一个",
+        "直接 ping 192.168.1.255 广播地址，回应的就是在线主机",
+        "用 arp -a 看 ARP 缓存就够，不用 ping"
+      ],
+      "answer": 0
+    },
+    "c04-q04": {
+      "options": [
+        "独立 IP 数用 awk '{print $1}' | sort -u | wc -l；PV 用 wc -l；TOP IP 用 sort | uniq -c | sort -nr | head",
+        "PV 就是 ss -an 统计出来的连接数",
+        "IP 数直接 wc -l 就行，每行一个 IP",
+        "PV 和 UV 是同一个东西，可以互换"
+      ],
+      "answer": 0
+    },
+    "c04-q05": {
+      "options": [
+        "find -mtime +3 找出旧日志 → tar -uf 按主机名归档 → 判断打包成功再 -delete → rsync 到日志服务器 → crontab 定时",
+        "直接 find -mtime +3 -delete，事后需要再从备份恢复",
+        "把日志目录整个 mv 到 /tmp，让应用重新生成新文件",
+        "用 logrotate 之外没有别的办法，只能手工删"
+      ],
+      "answer": 0
+    },
+    "c04-q06": {
+      "options": [
+        "for f in *.*; do mv \"$f\" \"${f%.*}.log\"; done",
+        "for f in *; do mv \"$f\" \"$f.log\"; done（会导致 app.log.log）",
+        "rename 's/\\.\\w+$//' *（把所有扩展名删掉）",
+        "sed -i 's/.*/.log/' 直接改文件名"
+      ],
+      "answer": 0
+    },
+    "c04-q07": {
+      "options": [
+        "拆成 init / install_nginx / install_php / install_mysql 函数，用 menu + case 做交互，每步判断 $?",
+        "把三条编译命令写进一个文件，从上到下顺序执行即可",
+        "所有软件都用 yum 装，不需要源码编译和依赖处理",
+        "用 ansible-playbook 就不需要写 shell 脚本了"
+      ],
+      "answer": 0
+    },
+    "c04-q08": {
+      "options": [
+        "df -P | awk 'NR>1 && $5+0>=90 {print $6, $5}'，命中就发邮件",
+        "df -h 输出里 grep 90 这个字符串，有就发邮件",
+        "du -sh / 超过 90G 就发邮件",
+        "free -m 看内存使用率超过 90% 就发邮件"
+      ],
+      "answer": 0
+    },
+    "c04-q09": {
+      "options": [
+        "free -m 取 Mem/Swap 两行，用 available/总量算比例，低于阈值告警",
+        "直接看 free 列，free 小于 100M 就告警",
+        "用 top 里第一行的数值判断",
+        "看 swap 总量而不是使用量"
+      ],
+      "answer": 0
+    },
+    "c04-q10": {
+      "options": [
+        "goal=$(date +%s -d 2020-10-01)；now=$(date +%s)；差值拆成天/时/分/秒，while true + sleep 1 刷新",
+        "用 date -d 直接算出天数，不需要循环",
+        "用 crontab 每秒执行一次 date 命令",
+        "用 sleep 86400 每天刷一次即可"
+      ],
+      "answer": 0
+    },
+    "c04-q11": {
+      "options": [
+        "$0 脚本名；$1 第一个参数；$# 参数个数；$@ 全部参数各自独立；$* 全部参数合成一个串；$? 上条命令返回码",
+        "$0 是第一个参数；$1 是脚本名",
+        "$@ 和 $* 完全等价，可以随便用",
+        "$# 表示上一条命令的退出码"
+      ],
+      "answer": 0
+    },
+    "c04-q12": {
+      "options": [
+        "awk 按列统计、sed 做流式替换；统计用 awk '{print $9}' access.log | sort | uniq -c，或 awk '$9==200||$9==404||$9==502'",
+        "awk 只能做替换，sed 只能做统计",
+        "统计状态码必须写 Python 脚本，shell 做不了",
+        "用 grep 200 就能精确统计出 200 的数量"
+      ],
+      "answer": 0
+    },
+    "c04-q13": {
+      "options": [
+        "set -e 出错即退出；set -u 未定义变量报错；pipefail 让管道任一环失败即整体失败；三者合起来是生产标配",
+        "三个参数作用完全一样，只是写法不同",
+        "set -e 能捕获所有错误，加了就万无一失",
+        "pipefail 是用来限制管道长度的"
+      ],
+      "answer": 0
+    },
+    "c04-q14": {
+      "options": [
+        "pgrep nginx 判断，不在就 systemctl start nginx，并把时间写进日志；用 cron 每分钟跑或交给 systemd Restart=always",
+        "用 top 每隔 10 秒看一次 nginx 的 CPU，为 0 就重启",
+        "写个 while true 死循环一直 start nginx",
+        "nginx 自己会重启，不需要监控"
+      ],
+      "answer": 0
+    },
+    "c04-q15": {
+      "options": [
+        "(( )) 做算术；[ ] 是 POSIX 的 test，运算符两边要有空格；[[ ]] 是 bash 增强，支持正则和 && ||，不做分词",
+        "三种写法完全等价，只有性能差别",
+        "[[ ]] 是 POSIX 标准，所有 shell 都支持",
+        "[ ] 支持 =~ 正则匹配"
+      ],
+      "answer": 0
     }
   }
 }
