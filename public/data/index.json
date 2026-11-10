@@ -30,6 +30,11 @@
       "id": 6,
       "title": "磁盘管理及存储篇",
       "file": "ch06.json"
+    },
+    {
+      "id": 7,
+      "title": "自动化运维篇",
+      "file": "ch07.json"
     }
   ]
 }
