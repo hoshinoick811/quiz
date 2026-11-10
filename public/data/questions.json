@@ -11,6 +11,11 @@
       "id": 2,
       "title": "网络篇",
       "short": "网络"
+    },
+    {
+      "id": 3,
+      "title": "Linux 系统服务篇",
+      "short": "系统服务"
     }
   ],
   "items": [
@@ -1294,6 +1299,420 @@
       ],
       "follow": [
         "如果 DNS 正常、TCP 也能连，但页面还是白屏，下一步查什么？"
+      ]
+    },
+    {
+      "id": "c03-q01",
+      "ch": 3,
+      "kind": "concept",
+      "level": 2,
+      "src": "edited",
+      "tag": [
+        "邮件",
+        "协议"
+      ],
+      "q": "请描述 SMTP 及 POP3 分别是什么协议、作用及端口号",
+      "a": [
+        "SMTP：简单邮件传输协议，负责**发送**邮件（服务器之间投递），端口 25",
+        "POP3：邮局协议第 3 版，负责**客户端收信**，端口 110",
+        "补充：IMAP（143）也是收信协议，比 POP3 强在「只同步头部、邮件留在服务器多端一致」",
+        "加密端口：SMTPS 465、提交端口 587、POP3S 995、IMAPS 993",
+        "注意：原文写「SMTP 用于发送和接收邮件」不准确——接收邮件是 POP3/IMAP 的事"
+      ],
+      "follow": [
+        "公司邮箱现在更常用 POP3 还是 IMAP？为什么？"
+      ]
+    },
+    {
+      "id": "c03-q02",
+      "ch": 3,
+      "kind": "concept",
+      "level": 1,
+      "src": "edited",
+      "tag": [
+        "HTTP",
+        "HTTPS"
+      ],
+      "q": "请描述 HTTP 及 HTTPS 分别是什么协议、作用及端口号",
+      "a": [
+        "HTTP：超文本传输协议，传输网页、图片、音视频等数据，端口 80，明文传输",
+        "HTTPS：HTTP over TLS，在 HTTP 与 TCP 之间加了一层加密，端口 443",
+        "HTTPS 提供三件事：加密（防窃听）、完整性（防篡改）、身份认证（证书防冒充）",
+        "代价：多一次 TLS 握手、需要证书、少量性能开销（现在有 TLS1.3 和会话复用基本可忽略）"
+      ],
+      "follow": [
+        "HTTPS 能不能防止「服务器本身被入侵后返回假内容」？"
+      ]
+    },
+    {
+      "id": "c03-q03",
+      "ch": 3,
+      "kind": "code",
+      "level": 3,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "iptables",
+        "端口转发"
+      ],
+      "q": "如何将本地 80 端口的请求转发到本地 8080 端口",
+      "a": [
+        "iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080",
+        "REDIRECT 用于本机端口重定向；跨机器转发要用 DNAT --to-destination IP:8080",
+        "iptables 规则重启就没了，要持久化：iptables-save > /etc/sysconfig/iptables",
+        "查看：iptables -t nat -L -n -v",
+        "生产上更常见的是用 Nginx 反代或 haproxy 做转发，规则更好维护",
+        "注意原文写成「-- to-port」多了一个空格，正确的参数是 --to-port"
+      ],
+      "follow": [
+        "REDIRECT 和 DNAT 的区别是什么？"
+      ]
+    },
+    {
+      "id": "c03-q04",
+      "ch": 3,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "FTP"
+      ],
+      "q": "简述 FTP 的主被动模式",
+      "a": [
+        "两种模式都以「客户端随机命令端口 → 服务端 21 端口」开始",
+        "主动模式（PORT）：服务端**用自己的 20 端口主动连**客户端的随机数据端口",
+        "主动模式的问题：客户端在 NAT / 防火墙后面时，服务端连不进来，传输就卡住",
+        "被动模式（PASV）：客户端主动连服务端的随机数据端口（服务端告诉客户端端口号）",
+        "所以客户端在内网、NAT 后面时用被动模式；服务端要放通被动端口段"
+      ],
+      "follow": [
+        "为什么 FTP 被动模式常要配 passive_ports 范围？"
+      ]
+    },
+    {
+      "id": "c03-q05",
+      "ch": 3,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "HTTP",
+        "请求过程"
+      ],
+      "q": "简述 HTTP 请求过程，并描述 GET 和 POST 的区别",
+      "a": [
+        "请求过程：客户端发 URL → DNS 解析出 IP → 建立 TCP 连接（三次握手）→ 生成并发送 HTTP 请求报文",
+        "→ 服务端解析报文、处理、返回响应 → 浏览器渲染 → 按需断开或复用连接",
+        "GET：参数放在 URL 上，适合查询，有长度限制、可被缓存、幂等，参数会留在日志里",
+        "POST：数据放在 body 里，适合提交，长度受服务端配置限制、不幂等、不默认缓存",
+        "同源方法还有 HEAD（只回响应头）、PUT（上传到指定位置）、DELETE（删除）",
+        "安全角度：GET 参数会进日志和各种记录，密码、令牌不要放 URL"
+      ],
+      "follow": [
+        "GET 请求真的不能带 body 吗？"
+      ]
+    },
+    {
+      "id": "c03-q06",
+      "ch": 3,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "SSH",
+        "免密"
+      ],
+      "q": "请简述 SSH 免密登录的原理",
+      "a": [
+        "主机 A 上生成一对密钥：公钥 + 私钥",
+        "把 A 的公钥追加到 B 上目标用户的 ~/.ssh/authorized_keys",
+        "A 发起连接，B 在 authorized_keys 里匹配到 A 的公钥",
+        "B 生成一串随机字符串，用 A 的公钥加密后发给 A",
+        "A 用本地私钥解密，把明文发回 B；B 比对一致就放行",
+        "全程私钥不出本机，抓包也拿不到私钥——这就是免密的本质"
+      ],
+      "follow": [
+        "authorized_keys 或家目录权限不对，为什么免密会失效？"
+      ]
+    },
+    {
+      "id": "c03-q07",
+      "ch": 3,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "文件共享",
+        "NFS",
+        "SMB"
+      ],
+      "q": "简述企业中常见的文件共享服务及特点",
+      "a": [
+        "FTP：跨平台 C/S 架构，TCP 传输，支持匿名和本地用户认证，命令端口 21、主动模式数据端口 20",
+        "NFS：Linux 之间共享文件系统，无用户认证、明文传输，只适合局域网；支持多节点挂载和并发写",
+        "SMB / CIFS：客户端主要是 Windows，Linux 也能挂载；支持文件与打印共享",
+        "选型：企业内文件共享选 FTP 或 Samba；全 Linux 的 web 后端存储选 NFS",
+        "安全提醒：NFS 靠 IP 授权，不要暴露到公网；Samba 注意版本漏洞（如永恒之蓝）"
+      ],
+      "follow": [
+        "NFS 为什么不适合跨公网使用？"
+      ]
+    },
+    {
+      "id": "c03-q08",
+      "ch": 3,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "DNS"
+      ],
+      "q": "简述 DNS 域名解析过程和原理",
+      "a": [
+        "先查本机：浏览器缓存 → 系统缓存 → hosts 文件",
+        "都没有就问本地 DNS 服务器（resolv.conf 里配的）",
+        "本地 DNS 先查自己的缓存和 A 记录，没有就去问根域（.）服务器",
+        "根服务器回复「.cn 的地址」，本地 DNS 再去问 .cn 顶级域",
+        "顶级域回复「itcast.cn 的权威服务器地址」，再去问权威 DNS",
+        "权威 DNS 返回 www.itcast.cn 的 A 记录，本地 DNS 缓存后返回给客户端",
+        "客户端 → 本地 DNS 是递归；本地 DNS → 根/顶级/权威 是迭代"
+      ],
+      "follow": [
+        "为什么要配两个 DNS 服务器？"
+      ]
+    },
+    {
+      "id": "c03-q09",
+      "ch": 3,
+      "kind": "code",
+      "level": 3,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "SMB",
+        "挂载"
+      ],
+      "q": "Linux 下如何挂载 Windows 共享目录",
+      "a": [
+        "Windows 侧确认共享已开（控制面板 → 程序和功能 → 启用或关闭 Windows 功能 → SMB）",
+        "Linux 侧建挂载点：mkdir -p /bkdata",
+        "挂载：mount -t cifs -o user=Administrator,pass='abc@123' //10.1.1.12/test /bkdata",
+        "查看：ls /bkdata；卸载：umount /bkdata",
+        "开机自动挂载写 /etc/fstab 更规范；原文写 /etc/rc.local 在 systemd 系统上要额外 chmod +x 才生效",
+        "密码别写在命令行和 fstab 里（会进 history）：用 credentials=/root/.smbcred 并 chmod 600"
+      ],
+      "follow": [
+        "挂载报 mount error(13): Permission denied 一般是什么问题？"
+      ]
+    },
+    {
+      "id": "c03-q10",
+      "ch": 3,
+      "kind": "scenario",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "排障",
+        "HTTP"
+      ],
+      "q": "网站打开不了或者很慢，如何分析",
+      "a": [
+        "先分层定位，别一上来就翻服务端日志",
+        "客户端侧：F12 看是 DNS 失败、连接超时还是 4xx/5xx；换浏览器、清缓存、换网络试",
+        "网络侧：ping / mtr 看在不在通，telnet IP 端口测端口通不通",
+        "域名侧：nslookup / dig 看解析对不对、有没有解析到旧 IP",
+        "服务端侧：Nginx access/error 日志看状态码与耗时，ss 看连接数，top/free 看资源",
+        "后端侧：应用日志、数据库慢查询、连接池、GC",
+        "慢和打不开要分开：打不开多是链路/端口/证书；慢多是后端处理或带宽"
+      ],
+      "follow": [
+        "页面能打开但一直转圈，和直接报错，排查路径差在哪？"
+      ]
+    },
+    {
+      "id": "c03-q11",
+      "ch": 3,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "Nginx",
+        "限流"
+      ],
+      "q": "Nginx 限流有哪几种方式，分别是什么",
+      "a": [
+        "limit_req_zone：限制请求速率，基于漏桶算法，按每秒请求数（QPS）限",
+        "limit_conn_zone：限制单个 IP 的最大并发连接数",
+        "geoip 模块 + 白黑名单：按来源 IP 放行或拒绝",
+        "上层手段：WAF、硬件防火墙、云厂商的限流策略",
+        "limit_req 常配 burst（允许突发的桶容量）和 nodelay（突发不排队直接放行）"
+      ],
+      "follow": [
+        "limit_req 的 burst 设太大会有什么后果？"
+      ]
+    },
+    {
+      "id": "c03-q12",
+      "ch": 3,
+      "kind": "scenario",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "Nginx",
+        "超时"
+      ],
+      "q": "Nginx 反向代理出现 upstream timed out，排查思路是什么",
+      "a": [
+        "确认后端服务是否卡顿：CPU、内存、连接数、有没有卡在慢查询或锁",
+        "看 Nginx error.log 原文，区分 connect() timed out（连不上）和 read timeout（连上了不回）",
+        "检查超时参数是否偏小：proxy_connect_timeout、proxy_read_timeout、proxy_send_timeout",
+        "网络层：Nginx 到后端的延迟、丢包、防火墙会话超时",
+        "后端程序本身慢：看应用日志、慢 SQL、线程池是否打满",
+        "504 是代理等后端超时；502 是后端给了无效响应（进程挂了/连接被重置），两者处理方向不同"
+      ],
+      "follow": [
+        "调大 proxy_read_timeout 能解决什么问题，又不能解决什么？"
+      ]
+    },
+    {
+      "id": "c03-q13",
+      "ch": 3,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "Nginx",
+        "缓冲区"
+      ],
+      "q": "Nginx 的 proxy_buffer 缓冲作用是什么",
+      "a": [
+        "Nginx 把后端返回的数据先收进缓冲区，再按客户端的速度发出去",
+        "作用：不让慢速客户端一直占着与后端的连接，提升后端吞吐",
+        "相关参数：proxy_buffering、proxy_buffer_size、proxy_buffers、proxy_busy_buffers_size",
+        "什么时候要关（proxy_buffering off）：SSE、流式输出、大文件下载——否则客户端看不到实时数据",
+        "缓冲区写满后会落到临时文件，磁盘慢时反而拖慢"
+      ],
+      "follow": [
+        "为什么流式接口要关掉 proxy_buffering？"
+      ]
+    },
+    {
+      "id": "c03-q14",
+      "ch": 3,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "HTTPS",
+        "TLS"
+      ],
+      "q": "HTTPS 的 TLS 握手简单流程",
+      "a": [
+        "客户端发 Client Hello：支持的协议版本、加密套件、随机数",
+        "服务端回 Server Hello：选定加密套件，返回证书链",
+        "客户端校验证书（是否可信 CA 签发、域名是否匹配、是否过期、是否被吊销）",
+        "客户端生成预主密钥，用服务端公钥加密后发送",
+        "双方用预主密钥 + 两个随机数算出会话密钥",
+        "之后用对称加密传输业务数据（非对称只用来协商，因为慢）",
+        "TLS1.3 简化为 1-RTT，会话复用时可以 0-RTT"
+      ],
+      "follow": [
+        "证书链不完整会看到什么现象？"
+      ]
+    },
+    {
+      "id": "c03-q15",
+      "ch": 3,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "HTTPS",
+        "HSTS"
+      ],
+      "q": "简述 HSTS 的作用",
+      "a": [
+        "HSTS = HTTP Strict Transport Security，响应头告诉浏览器「这个域名以后只能用 HTTPS」",
+        "浏览器收到后，在 max-age 时间内对该域名强制走 HTTPS，连书签和历史记录也直接升级",
+        "解决的是「首次 http 访问被劫持 / 301 跳转被中间人篡改」这类降级攻击",
+        "关键参数：max-age、includeSubDomains、preload（申请进浏览器内置列表）",
+        "注意：一旦设了长 max-age，证书出问题时用户没法点「继续访问」，要留好回退方案"
+      ],
+      "follow": [
+        "HSTS 能不能防住第一次访问时的劫持？"
+      ]
+    },
+    {
+      "id": "c03-a01",
+      "ch": 3,
+      "kind": "acceptance",
+      "level": 3,
+      "src": "written",
+      "tag": [
+        "验收",
+        "排障"
+      ],
+      "q": "【验收一】同事说「网站打不开了」，你只知道域名。请按顺序说出你的排查路径，以及每一步在确认什么。",
+      "a": [
+        "第 1 步 DNS：nslookup / dig 域名，确认解析结果对不对、是不是解析到旧 IP 或解析失败",
+        "第 2 步 网络：ping 目标 IP；不通就先查链路和本机网络",
+        "第 3 步 端口：telnet IP 80（或 nc -zv），确认端口是通的；端口不通看防火墙/安全组/服务是否在听",
+        "第 4 步 HTTP：curl -I 看状态码和响应头，区分 4xx（请求/权限）、5xx（服务端）、证书错误",
+        "第 5 步 服务端：Nginx error.log、应用日志、系统负载（top/free/df）",
+        "第 6 步 后端：应用是否活着、数据库是否慢、连接池是否打满",
+        "每步都要能说出「这一步排除了什么」，而不是把命令背一遍"
+      ],
+      "follow": [
+        "如果 curl 能通但浏览器打不开，问题可能在哪些层？"
+      ]
+    },
+    {
+      "id": "c03-a02",
+      "ch": 3,
+      "kind": "acceptance",
+      "level": 4,
+      "src": "written",
+      "tag": [
+        "验收",
+        "文件共享"
+      ],
+      "q": "【验收二】部门要共享文件：一半人用 Windows，一半人用 Linux；同时有几台 Linux web 机器要读写同一份上传目录。请给出方案和配置要点。",
+      "a": [
+        "拆成两个需求：① 人用的共享 → SMB/Samba（Windows 原生支持，Linux 也能挂）",
+        "② 机器用的共享 → NFS（Linux 原生、支持多节点并发写）",
+        "Samba 要点：smb.conf 配共享目录、用户/密码、权限位，防火墙放通 445/139",
+        "NFS 要点：/etc/exports 配导出目录与客户端网段、no_root_squash 慎用、防火墙放通 2049 与 rpcbind",
+        "两边都要考虑：用户权限（属主/属组）、并发写冲突、备份",
+        "不要让 NFS 暴露到公网；Samba 注意老版本漏洞",
+        "验收：Windows 同事能映射网络驱动器，Linux web 机器能挂载并写入成功"
+      ],
+      "follow": [
+        "如果只有 Windows 机器但要求高可用，Samba 该怎么部署？"
+      ]
+    },
+    {
+      "id": "c03-a03",
+      "ch": 3,
+      "kind": "acceptance",
+      "level": 5,
+      "src": "written",
+      "tag": [
+        "验收",
+        "HTTPS"
+      ],
+      "q": "【验收三】把现有 HTTP 站点改造成 HTTPS，请说出完整的上线检查清单。",
+      "a": [
+        "证书：申请（Let's Encrypt 或商业 CA），确认域名覆盖（含 www 与裸域）",
+        "部署：证书链要完整（服务器证书 + 中间证书），否则部分客户端报错",
+        "Nginx 配置：listen 443 ssl、ssl_certificate / ssl_certificate_key、协议版本与加密套件",
+        "跳转：80 端口 301 到 443，注意跳转目标用 https 且不要死循环",
+        "HSTS：确认证书稳定后再开，设 max-age 并考虑 includeSubDomains",
+        "混合内容：页面里的图片/JS/CSS 资源都要换成 https，否则浏览器仍标不安全",
+        "验证：浏览器锁标志、openssl s_client 看证书链、curl -I 看跳转、外部工具测评级",
+        "回滚预案：证书或配置出问题时能快速切回，并且 HSTS 的 max-age 不要一上来就设一年"
+      ],
+      "follow": [
+        "为什么建议 HSTS 的 max-age 先设小一点再逐步加长？"
       ]
     }
   ]

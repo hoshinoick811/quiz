@@ -397,6 +397,123 @@
         "ARP 欺骗只影响本机，影响不到同网段其他主机"
       ],
       "answer": 0
+    },
+    "c03-q01": {
+      "options": [
+        "SMTP 负责发信端口 25；POP3 负责客户端收信端口 110",
+        "SMTP 负责收信端口 110；POP3 负责发信端口 25",
+        "SMTP 和 POP3 都是收信协议，端口都是 25",
+        "SMTP 端口 443，POP3 端口 80"
+      ],
+      "answer": 0
+    },
+    "c03-q02": {
+      "options": [
+        "HTTP 端口 80 明文；HTTPS 端口 443，在 HTTP 与 TCP 之间加了 TLS",
+        "HTTP 端口 443；HTTPS 端口 80，靠请求头区分",
+        "HTTPS 只是把 HTTP 内容压缩了，端口还是 80",
+        "HTTPS 端口 22，和 SSH 共用"
+      ],
+      "answer": 0
+    },
+    "c03-q03": {
+      "options": [
+        "iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080",
+        "iptables -A INPUT -p tcp --dport 80 -j REDIRECT 8080",
+        "iptables -t nat -A OUTPUT -p tcp --sport 80 -j DNAT --to-port 8080",
+        "iptables -t nat -A PREROUTING -p tcp --dport 8080 -j REDIRECT --to-port 80"
+      ],
+      "answer": 0
+    },
+    "c03-q04": {
+      "options": [
+        "主动模式由服务端 20 端口主动连客户端；被动模式由客户端主动连服务端的随机数据端口",
+        "主动模式由客户端连服务端 20 端口；被动模式由服务端连客户端",
+        "两种模式都是服务端主动发起数据连接，只是端口不同",
+        "主动模式用 UDP，被动模式用 TCP"
+      ],
+      "answer": 0
+    },
+    "c03-q05": {
+      "options": [
+        "GET 参数在 URL、可缓存、幂等、有长度限制；POST 数据在 body、不幂等、不默认缓存",
+        "GET 参数在 body；POST 参数在 URL",
+        "GET 和 POST 只是名字不同，行为和限制完全一样",
+        "POST 请求不能被缓存，所以 POST 一定比 GET 安全"
+      ],
+      "answer": 0
+    },
+    "c03-q06": {
+      "options": [
+        "客户端把公钥放到服务端 authorized_keys；服务端用公钥加密随机串，客户端用私钥解密后回传比对",
+        "客户端把私钥复制到服务端，登录时直接比对私钥是否相同",
+        "服务端保存客户端的密码哈希，登录时比对",
+        "客户端和服务端各算一遍 MD5，相同就放行"
+      ],
+      "answer": 0
+    },
+    "c03-q07": {
+      "options": [
+        "FTP 跨平台可匿名可认证；NFS 面向 Linux 无认证明文、适合局域网后端存储；SMB 主要面向 Windows 且能共享打印",
+        "三种服务本质一样，只是端口不同",
+        "NFS 有完善的用户认证，可以直接暴露到公网",
+        "SMB 只能在 Windows 上用，Linux 无法挂载"
+      ],
+      "answer": 0
+    },
+    "c03-q08": {
+      "options": [
+        "本机缓存/hosts → 本地 DNS → 根域 → 顶级域 → 权威 DNS，逐级问到 A 记录后缓存返回",
+        "客户端直接连权威 DNS，跳过本地 DNS 和根域",
+        "本地 DNS 一次就能拿到结果，不需要询问根服务器",
+        "DNS 解析只查 hosts 文件，不查网络"
+      ],
+      "answer": 0
+    },
+    "c03-q09": {
+      "options": [
+        "mount -t cifs -o user=xx,pass=xx //10.1.1.12/test /bkdata",
+        "mount -t nfs 10.1.1.12:/test /bkdata",
+        "smbclient -L //10.1.1.12 执行完就完成了挂载",
+        "mount --bind //10.1.1.12/test /bkdata"
+      ],
+      "answer": 0
+    },
+    "c03-q11": {
+      "options": [
+        "limit_req_zone 按 QPS 限速（漏桶）；limit_conn_zone 限单 IP 并发连接数；另有 IP 黑白名单和上层 WAF",
+        "只有 limit_req_zone 一种方式，其余都是它的参数",
+        "limit_conn_zone 用来限制每秒请求数",
+        "Nginx 本身不支持限流，必须靠 WAF"
+      ],
+      "answer": 0
+    },
+    "c03-q13": {
+      "options": [
+        "先把后端响应收进缓冲，再按客户端速度发出，避免慢客户端占住后端连接；流式接口要关掉",
+        "缓冲区用来缓存静态文件，减少磁盘 IO",
+        "proxy_buffering 用来压缩响应内容，节省带宽",
+        "缓冲区越大越好，没有副作用"
+      ],
+      "answer": 0
+    },
+    "c03-q14": {
+      "options": [
+        "ClientHello → ServerHello + 证书 → 客户端校验证书并发送用公钥加密的预主密钥 → 双方算会话密钥 → 对称加密传输",
+        "双方直接交换对称密钥，明文传输",
+        "客户端先发证书给服务端校验，服务端不需要证书",
+        "握手只交换端口号，不涉及密钥"
+      ],
+      "answer": 0
+    },
+    "c03-q15": {
+      "options": [
+        "响应头告诉浏览器该域名只能用 HTTPS，防止 http 访问被劫持或 301 跳转被篡改",
+        "把 HTTP 页面压缩后走 HTTPS 传输",
+        "是服务器端强制跳转的另一种写法，和 301 完全等价",
+        "用来给证书做自动续期"
+      ],
+      "answer": 0
     }
   }
 }
