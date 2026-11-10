@@ -35,6 +35,11 @@
       "id": 7,
       "title": "自动化运维篇",
       "file": "ch07.json"
+    },
+    {
+      "id": 8,
+      "title": "数据库管理篇",
+      "file": "ch08.json"
     }
   ]
 }

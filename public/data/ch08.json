@@ -1,0 +1,942 @@
+{
+  "items": [
+    {
+      "id": "c08-q01",
+      "ch": 8,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "MySQL",
+        "架构"
+      ],
+      "q": "简单描述一下 MySQL 的基本逻辑架构",
+      "a": [
+        "经典 C/S 架构。客户端连接进来先经过连接层：连接池、认证、权限校验、线程复用",
+        "第二层是 SQL 层（Server 层）：解析器、优化器、执行器，外加视图、存储过程、触发器、内置函数都在这层",
+        "解析器做词法语法分析生成解析树，优化器选执行路径（选哪个索引、表连接顺序），执行器按执行计划调存储引擎",
+        "第三层是存储引擎层：插件式设计，通过统一的 handler API 屏蔽差异，InnoDB、MyISAM、Memory 属于这一层",
+        "第四层是存储层：真正落在磁盘上的数据文件、redo/undo、binlog、错误日志",
+        "要点：SQL 层是 MySQL 自己的，存储引擎是可替换的；跨存储引擎的功能（binlog、复制）在 SQL 层，所以换引擎不影响复制",
+        "要纠正一个常见过时说法：查询缓存在 5.7 已弃用、8.0 直接删除了，说架构时别再把它当一层"
+      ],
+      "follow": [
+        "为什么说换存储引擎不影响主从复制？"
+      ]
+    },
+    {
+      "id": "c08-q02",
+      "ch": 8,
+      "kind": "concept",
+      "level": 2,
+      "src": "edited",
+      "tag": [
+        "MySQL",
+        "数据类型"
+      ],
+      "q": "列出 MySQL 常用的数据类型及对应的关键字",
+      "a": [
+        "整数：tinyint / smallint / mediumint / int / bigint，后面可以带 UNSIGNED",
+        "小数：decimal（精确，金额必须用它）、float / double（近似，有精度误差，别存钱）",
+        "字符串：char（定长）、varchar（变长）、text（大文本）、blob（二进制）",
+        "时间：date、time、datetime、timestamp（带时区转换，范围到 2038）、year",
+        "枚举与集合：enum（单选）、set（多选）",
+        "8.0 之后还有：json（可查询的 JSON）、geometry（空间数据）、varbinary",
+        "选型要点：金额用 decimal 不用 float；时间用 datetime 还是 timestamp 取决于要不要跨时区；varchar 长度按实际定，别一律 255",
+        "原文漏了 decimal / text / timestamp / json，这几个恰恰是面试里最常被追问的"
+      ],
+      "follow": [
+        "为什么金额不能用 float？"
+      ]
+    },
+    {
+      "id": "c08-q03",
+      "ch": 8,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "MySQL",
+        "索引"
+      ],
+      "q": "简述索引的优点与缺点，默认情况下哪个文件保存表的索引信息",
+      "a": [
+        "优点：像书的目录，把全表扫描变成按索引定位，大幅减少扫描行数；还能避免排序（Using index 覆盖索引时甚至不回表）",
+        "缺点：占空间；每次 insert/update/delete 都要维护索引，写变慢；索引太多优化器反而可能选错",
+        "MyISAM：索引在 表名.MYI，数据在 表名.MYD",
+        "InnoDB：要纠正原文的说法——5.6.6 之后默认 innodb_file_per_table=1，每张表的数据和索引都在自己的 表名.ibd 里；ibdata1 存的是元数据、undo、双写缓冲这些共享内容，不是「表和索引都存 ibdata」",
+        "InnoDB 的索引即数据：主键索引（聚簇索引）的叶子节点直接存整行，二级索引叶子存主键值，所以查二级索引要回表",
+        "这也是为什么主键建议用自增：随机主键会造成页分裂和随机 IO"
+      ],
+      "follow": [
+        "为什么二级索引查完还要回表？覆盖索引怎么避免？"
+      ]
+    },
+    {
+      "id": "c08-q04",
+      "ch": 8,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "MySQL",
+        "执行流程"
+      ],
+      "q": "简述一条 SQL 在 MySQL 里的执行过程",
+      "a": [
+        "客户端发请求 → 连接层认证、分配线程（或从线程池取）",
+        "词法语法分析：把 SQL 切成 token，校验语法和对象是否存在，生成解析树",
+        "预处理与优化：优化器根据统计信息选索引、决定 join 顺序，生成执行计划（可以用 explain 看到）",
+        "执行器：按执行计划调用存储引擎的接口，逐行取数据、做过滤和聚合，把结果集返回客户端",
+        "InnoDB 内部：先查 buffer pool，没有就按页从磁盘读；写操作先写 undo（可回滚）+ redo（崩溃恢复），提交时按 innodb_flush_log_at_trx_commit 落盘",
+        "原文提到的「查询缓存」在 8.0 已经没有了，5.7 里也默认关闭——这条现在讲会显得很旧",
+        "排障时对应到这条链路上：慢在解析（SQL 太长/太复杂）、慢在优化（选错索引）、慢在执行（扫描行数多）、慢在引擎（锁等待、IO）"
+      ],
+      "follow": [
+        "explain 看到的是哪一步的产物？"
+      ]
+    },
+    {
+      "id": "c08-q05",
+      "ch": 8,
+      "kind": "code",
+      "level": 2,
+      "src": "doc",
+      "verify": true,
+      "tag": [
+        "MySQL",
+        "SQL"
+      ],
+      "q": "写出查找 customer 表中 uid 列大于 100 的记录，按 uid 正序，输出前 10 条",
+      "a": [
+        "SELECT * FROM customer WHERE uid > 100 ORDER BY uid ASC LIMIT 10;",
+        "ASC 是默认排序方向，可以不写；DESC 才是倒序",
+        "LIMIT 10 等价于 LIMIT 0,10（偏移 0，取 10 条）",
+        "这种「范围条件 + 排序」如果 uid 上有索引，能直接走索引有序扫描，不需要额外排序",
+        "要做到不回表可以只查需要的列（覆盖索引），SELECT * 会把整行读出来",
+        "深分页（LIMIT 1000000,10）会很慢，要改成按上次最大 id 翻页：WHERE uid > 1000000 ORDER BY uid LIMIT 10"
+      ],
+      "follow": [
+        "为什么 LIMIT 1000000,10 很慢？"
+      ]
+    },
+    {
+      "id": "c08-q06",
+      "ch": 8,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "MySQL",
+        "备份"
+      ],
+      "q": "介绍一下备份 MySQL 的常用工具及特点",
+      "a": [
+        "mysqldump：逻辑备份，导出成 SQL 或 CSV；用得最广，跨版本跨平台，但数据量大了恢复慢（要重放 SQL）",
+        "要纠正原文：「MyISAM 锁表、InnoDB 锁行」不对。mysqldump 默认用 --lock-tables 锁表；InnoDB 要用 --single-transaction 才能拿到一致性快照且不锁表，这才是生产里的标准用法",
+        "mysqlpump / mysqlshell dump：官方多线程逻辑备份，mysqldump 的替代品",
+        "mysqlhotcopy：只支持 MyISAM，早就没人用了",
+        "Percona XtraBackup：物理热备，只对 InnoDB 有效，支持增量、压缩、并行，大库首选；恢复快，但版本要和 MySQL 版本对上（8.0 要用 XtraBackup 8.x）",
+        "mydumper / mydumper2：多线程逻辑备份，原文那个 launchpad 链接已经失效，现在在 GitHub 上维护",
+        "云上：RDS 自带快照和 binlog，直接买备份服务就行，不用自己搭工具",
+        "选择：小库（<50G）mysqldump --single-transaction 够用；大库热备选 XtraBackup；跨版本迁移用逻辑备份"
+      ],
+      "follow": [
+        "mysqldump 不加 --single-transaction 会怎样？"
+      ]
+    },
+    {
+      "id": "c08-q07",
+      "ch": 8,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "MySQL",
+        "备份策略"
+      ],
+      "q": "做数据库备份时需要考虑哪些因素",
+      "a": [
+        "先定 RPO 和 RTO：能容忍丢多少数据（决定全量+binlog 的频率）、能容忍停多久（决定恢复方式）",
+        "备份什么：数据文件、binlog（做时间点恢复的关键）、my.cnf 配置、账号和授权、定时任务、用户自定义函数",
+        "备份频率与保留策略：全量多久一次、增量多久一次、保留几天，和磁盘容量一起算",
+        "备份窗口：避开业务高峰，评估备份对 IO 和主库的影响（大库热备会明显吃 IO）",
+        "放在哪：不能和数据库同一块盘、同一个机房；至少一份异地或对象存储，并且加密",
+        "一定要做恢复演练：定期在测试环境真恢复一遍并校验数据。没演练过的备份等于没有备份",
+        "一致性：用事务快照（--single-transaction）或锁表，保证备份点是一致的，否则外键和业务数据会对不上",
+        "监控：备份任务成功/失败要告警，备份文件大小突变也要告警（0 字节的备份最坑人）"
+      ],
+      "follow": [
+        "备份文件天天生成成功，为什么还说「等于没备份」？"
+      ]
+    },
+    {
+      "id": "c08-q08",
+      "ch": 8,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "MySQL",
+        "冷热备份"
+      ],
+      "q": "什么是冷备份和热备份，各有什么优缺点",
+      "a": [
+        "冷备份：停库或停写入再备份，数据库不可用。一致性好、恢复简单快，但业务要停，通常只用于小库、迁移、初始化",
+        "热备份：数据库继续读写的同时备份。业务不中断，但备份期间更吃 IO 和 CPU，还要处理一致性（事务快照或物理拷贝）",
+        "温备份（常被一起问）：允许读不允许写，比如锁表只读",
+        "要纠正原文：热备的优点不是「备份速度快」——热备往往更慢（要拿一致性快照、拷贝量更大），它的优点是「不中断业务」",
+        "组合方式：全量 + 增量/差异 + binlog。全量每周一次、增量每天、binlog 持续归档，恢复时全量+增量+binlog 回放到指定时间点",
+        "对应的 RPO：只有全量 = 丢一天；全量+binlog = 丢几秒到几分钟",
+        "冷备的一个坑：冷备期间如果有定时任务连进来，可能拿到不一致的数据"
+      ],
+      "follow": [
+        "用 binlog 做时间点恢复，具体要提供什么？"
+      ]
+    },
+    {
+      "id": "c08-q09",
+      "ch": 8,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "MySQL",
+        "存储引擎"
+      ],
+      "q": "什么是存储引擎，最常用的有哪些",
+      "a": [
+        "存储引擎是 MySQL 里「怎么存、怎么取」的实现，通过统一接口接入，可以按表选、按库混用",
+        "InnoDB：5.5 之后的默认引擎。支持事务、行锁、外键、崩溃恢复（redo log）、MVCC，读写并发好，绝大多数场景就用它",
+        "MyISAM：不支持事务和行锁，只有表锁；特点是索引和数据分开文件（.MYI/.MYD），count(*) 快，但写并发差、崩溃后易损坏，现在基本只出现在老系统里",
+        "Memory：数据在内存，重启就丢，用于临时表和小型缓存表",
+        "其他：Archive（只压缩存不查）、CSV（可被 Excel 读）、Blackhole（吞数据，用于复制测试）",
+        "怎么选：默认 InnoDB；只有在明确需要全文检索老方案、或纯只读报表时才会考虑别的，而且现在全文检索也不会选 MyISAM",
+        "切换引擎：ALTER TABLE t ENGINE=InnoDB，大表会锁很久，要用 pt-online-schema-change 或 gh-ost"
+      ],
+      "follow": [
+        "MyISAM 和 InnoDB 的 count(*) 为什么差那么多？"
+      ]
+    },
+    {
+      "id": "c08-q10",
+      "ch": 8,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "MySQL",
+        "binlog"
+      ],
+      "q": "介绍一下 MySQL 的二进制日志（binlog）的作用",
+      "a": [
+        "记录所有会改变数据的操作（DDL/DML/DCL），不记 select/show 这类只读语句",
+        "作用一：主从复制——master 把 binlog 发给 slave，slave 重放，实现数据同步",
+        "作用二：数据恢复——全量备份 + binlog 回放，可以恢复到任意时间点（PITR）",
+        "作用三：审计和变更追踪，配合 binlog 解析工具（canal、maxwell）做数据同步和 CDC",
+        "三种格式：STATEMENT（记 SQL）、ROW（记每行变更，8.0 默认）、MIXED（自动切换）；ROW 最安全，但日志量大",
+        "重要参数：log_bin 开启、sync_binlog（每次提交都刷盘=1 最安全）、max_binlog_size、binlog_format",
+        "ROW 格式下要看具体改了什么是很难受的，用 mysqlbinlog -vv 解码成可读形式",
+        "注意：binlog 和 redo log 不是一回事——redo 是 InnoDB 的崩溃恢复日志（物理），binlog 是 Server 层的逻辑日志"
+      ],
+      "follow": [
+        "redo log 和 binlog 的两阶段提交解决什么问题？"
+      ]
+    },
+    {
+      "id": "c08-q11",
+      "ch": 8,
+      "kind": "code",
+      "level": 3,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "MySQL",
+        "binlog 清理"
+      ],
+      "q": "开启二进制日志后文件越来越大，如何正确清理",
+      "a": [
+        "先看当前写到哪个文件：SHOW MASTER STATUS;（8.0.22+ 改叫 SHOW BINARY LOG STATUS），从库用 SHOW SLAVE STATUS 看正在读取哪个",
+        "按时间清理：PURGE MASTER LOGS BEFORE '2024-01-01 00:00:00';",
+        "按文件清理：PURGE MASTER LOGS TO 'mysql-bin.000123';（删的是这个文件之前的所有文件，不含它本身）",
+        "要纠正原文：expire_logs_days 在 8.0 已经废弃，改用 binlog_expire_logs_seconds（秒）；5.7 及以前才用 expire_logs_days",
+        "绝对不要用 rm 直接删文件：binlog 索引文件（mysql-bin.index）对不上，主从会直接断",
+        "清理前确认备份已覆盖这段时间——删掉的 binlog 就再也恢复不到那段时间点了",
+        "有从库时更要注意：从库还没消费到的 binlog 不能删，否则从库报 1236 错误要去重建"
+      ],
+      "follow": [
+        "为什么直接 rm 掉 binlog 文件会出事？"
+      ]
+    },
+    {
+      "id": "c08-q12",
+      "ch": 8,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "MySQL",
+        "主从复制"
+      ],
+      "q": "简述 MySQL 主从复制的原理",
+      "a": [
+        "主库有个 binlog dump 线程：从库 IO 线程连上来，dump 线程把 binlog 事件发给它",
+        "从库 IO 线程收到后写进本地 relay log，同时把位点（文件名 + position）记到 master.info（5.6+ 后在表里）",
+        "从库 SQL 线程读 relay log，解析并重放，数据就和主库一致了",
+        "三个线程：主库的 dump、从库的 IO、从库的 SQL；出问题先看 Slave_IO_Running 和 Slave_SQL_Running 哪个是 No，能直接判断断在哪一环",
+        "现代版本的两个改进：GTID（不用手工算位点，切换方便）、并行复制（SQL 线程多线程重放，缓解单线程延迟）",
+        "默认是异步复制，主库提交就返回，不等从库；要更强一致用半同步（至少一个从库确认）或组复制 MGR",
+        "搭建要点：server-id 唯一、log_bin 开启、binlog_format 一致、从库 read_only=1 防误写"
+      ],
+      "follow": [
+        "Slave_SQL_Running=No 常见原因有哪些？"
+      ]
+    },
+    {
+      "id": "c08-q13",
+      "ch": 8,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "MySQL",
+        "事务"
+      ],
+      "q": "描述关系型数据库中事务的四大特性",
+      "a": [
+        "原子性 Atomicity：一个事务里的操作要么全成功要么全回滚，靠 undo log 实现",
+        "一致性 Consistency：事务前后数据库都要满足约束（唯一键、外键、业务规则），这是目的，其他三个是手段",
+        "隔离性 Isolation：并发事务之间互不干扰，靠锁 + MVCC 实现，SQL 标准有四个隔离级别",
+        "持久性 Durability：提交后的数据不会因为宕机丢失，靠 redo log + 刷盘实现",
+        "四个隔离级别：读未提交、读已提交（RC）、可重复读（RR，InnoDB 默认）、串行化",
+        "对应的三个异常：脏读、不可重复读、幻读；InnoDB 在 RR 下用 MVCC + 间隙锁基本解决了幻读",
+        "回答技巧：每个特性后面挂上「靠什么实现的」，比只背四个词强得多"
+      ],
+      "follow": [
+        "RR 级别下幻读到底解决了吗？"
+      ]
+    },
+    {
+      "id": "c08-q14",
+      "ch": 8,
+      "kind": "code",
+      "level": 3,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "MySQL",
+        "密码找回"
+      ],
+      "q": "MySQL 管理员密码忘了，如何找回",
+      "a": [
+        "思路：跳过授权表启动 → 空密码登录 → 重设密码 → 去掉参数重启",
+        "第一步：my.cnf 的 [mysqld] 下加 skip-grant-tables，重启服务；8.0 建议同时加 skip-networking，避免这段时间谁都能连",
+        "第二步：mysql -uroot 直接进（此时不校验密码）",
+        "第三步重置密码。要纠正原文：5.7/8.0 里直接 update user set authentication_string='123456' 是错的，存进去的不是加密后的 hash，改完也登不上",
+        "5.7/8.0 正确做法：先 FLUSH PRIVILEGES; 再用 ALTER USER 'root'@'localhost' IDENTIFIED BY '新密码';",
+        "5.6 及以前才是 update user set password=PASSWORD('新密码') where user='root';",
+        "第四步：去掉 skip-grant-tables 和 skip-networking，重启，用新密码登录验证",
+        "生产上优先用有权限的账号改（ALTER USER），或者走云平台的密码重置——真忘到只能改配置，说明账号管理有缺口"
+      ],
+      "follow": [
+        "skip-grant-tables 期间为什么建议开 skip-networking？"
+      ]
+    },
+    {
+      "id": "c08-q15",
+      "ch": 8,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "MySQL",
+        "多实例"
+      ],
+      "q": "什么是 MySQL 多实例，如何配置",
+      "a": [
+        "一台机器上跑多个 mysqld 进程，各自监听不同端口、用不同数据目录和 socket，互不影响",
+        "目的：省机器、隔离不同业务、便于做版本兼容或测试环境；缺点是单机故障会一起挂，资源互相抢",
+        "每个实例必须有独立的：port、socket、datadir、pid-file、log-error、binlog 名前缀、server-id",
+        "两种配法：①一个实例一个配置文件，用 mysqld_safe --defaults-file 指定 ②用一个 my.cnf 配多个 [mysqld@实例名] 段，用 mysqld_multi start 1,2 管理",
+        "初始化：mysqld --initialize-insecure --datadir=/data/mysql3307 --user=mysql",
+        "systemd 更常用的做法：写一个 mysql@.service 模板，systemctl start mysql@3307",
+        "监控要按端口分别采，别只看一台机器的总 CPU——一个实例把机器打满，其他实例没数据但都在报错",
+        "容量规划：内存要按实例数分配，innodb_buffer_pool_size × 实例数不能超过物理内存"
+      ],
+      "follow": [
+        "多实例下 innodb_buffer_pool_size 怎么分配？"
+      ]
+    },
+    {
+      "id": "c08-q16",
+      "ch": 8,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "MySQL",
+        "安全"
+      ],
+      "q": "如何加强 MySQL 安全，给出可行措施",
+      "a": [
+        "账号：删掉匿名用户和 test 库；每个业务一个账号，只给必要的库和权限（不给 GRANT、FILE、SUPER）；禁止 root 远程登录",
+        "网络：bind-address 只监听内网或 127.0.0.1；用安全组/防火墙限制来源 IP；数据库不暴露公网是最有效的一条",
+        "认证：强密码策略（validate_password 组件）、定期轮换；连接可上 SSL/TLS",
+        "操作：不在命令行直接写 -p密码（会进 history 和 ps）；用 ~/.my.cnf 或 mysql_config_editor 存的登录路径",
+        "审计：开 general log 代价太大，用 audit plugin 或云平台的审计，至少记录 DDL 和权限变更",
+        "数据：备份加密、敏感字段脱敏/加密存储",
+        "运维侧：及时打补丁（尤其 CVE）、定期做权限盘点（谁有 SUPER、谁有 % 主机）",
+        "要提醒一句：改端口不是安全措施，扫描器一秒就能找到；真正的边界是网络隔离 + 最小权限"
+      ],
+      "follow": [
+        "为什么说「改端口」不算安全加固？"
+      ]
+    },
+    {
+      "id": "c08-q17",
+      "ch": 8,
+      "kind": "concept",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "MySQL",
+        "主从延迟"
+      ],
+      "q": "分析一下 MySQL 主从复制延迟的因素",
+      "a": [
+        "从库硬件比主库差：CPU、磁盘（尤其机械盘随机写）跟不上重放速度——从库配置不该低于主库",
+        "单线程重放：5.6 以前 SQL 线程只有一个，主库多核并发写，从库只能串行回放，这是最常见的原因；5.7+ 用 slave_parallel_workers + 组提交并行复制缓解",
+        "大事务：一次 delete 几百万行会阻塞后续所有重放，Seconds_Behind_Master 直接飙到很大；要拆小批量",
+        "大表 DDL：ALTER TABLE 会长时间占住 SQL 线程，DDL 要在低峰做或用 gh-ost",
+        "主库写压力大：批量导入、慢 SQL 都会把 binlog 产量拉高",
+        "网络带宽和延迟：跨机房复制，binlog 传输跟不上",
+        "从库上还跑着查询：读请求抢 IO 和 CPU，延迟会更严重——延迟大的从库要暂时摘掉读流量",
+        "监控坑：Seconds_Behind_Master 在从库「卡住但没落后」时会显示 0，不可靠；要用 pt-heartbeat 打心跳，或者看 GTID 差值"
+      ],
+      "follow": [
+        "为什么说 Seconds_Behind_Master 不能全信？"
+      ]
+    },
+    {
+      "id": "c08-q18",
+      "ch": 8,
+      "kind": "scenario",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "MySQL",
+        "启动失败"
+      ],
+      "q": "MySQL 启动不了，分析可能的原因和排查思路",
+      "a": [
+        "第一件事永远是看错误日志：datadir 下的 hostname.err 或 log-error 指定的文件，或者 journalctl -u mysqld。日志里 90% 直接写了原因",
+        "权限问题：datadir、日志目录的属主属组要和 mysql 用户一致；/tmp 没权限也会起不来",
+        "配置文件错误：my.cnf 里有不认识的参数或路径写错。用 mysqld --defaults-file=/etc/my.cnf --verbose --help >/dev/null 校验语法",
+        "端口被占用：ss -lntp 看 3306，或者上次没正常关闭留了僵尸进程 / pid 文件",
+        "磁盘满：写不了 redo/undo 或临时文件，直接启动失败",
+        "InnoDB 崩溃恢复中：大数据量下崩溃恢复可能几十分钟，日志里会显示 recovery 进度，别当成卡死",
+        "ibdata1 或 redo 文件损坏：只能从备份恢复，或者用 innodb_force_recovery 逐级抢救（1-6 级，越高级越可能丢数据）",
+        "SELinux 挡了 datadir 的访问：setenforce 0 试一下，或者改上下文",
+        "排查顺序：读日志 → 看权限和磁盘 → 试前台启动（mysqld --console）拿到完整输出 → 再动配置"
+      ],
+      "follow": [
+        "innodb_force_recovery 开到 6 意味着什么？"
+      ]
+    },
+    {
+      "id": "c08-q19",
+      "ch": 8,
+      "kind": "scenario",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "MySQL",
+        "排查"
+      ],
+      "q": "网站访问很慢，怀疑和数据库有关，你会怎么排查",
+      "a": [
+        "先定位是不是数据库：看应用日志里的 SQL 耗时、看数据库的 CPU/IO/连接数，而不是直接去翻代码",
+        "会话与锁：SHOW PROCESSLIST 看有没有一堆 Sending data / Waiting for lock；确实有锁等待就 SHOW ENGINE INNODB STATUS 看阻塞源头",
+        "慢查询：开 slow_query_log（long_query_time 设 1 秒），用 pt-query-digest 汇总出 Top SQL，按「总耗时 = 次数 × 单次耗时」排序，别只看单次最慢的那条",
+        "执行计划：拿 Top SQL 跑 EXPLAIN，看 type 是不是 ALL、rows 是不是几十万、Extra 有没有 Using filesort / Using temporary",
+        "索引与统计信息：该建的索引有没有、统计信息是不是过期（ANALYZE TABLE）；隐式类型转换会让索引失效",
+        "连接层：连接数是否打满（max_connections、Too many connections）、连接池配置是否合理、有没有长连接泄漏",
+        "主从：读请求是否打到延迟很大的从库，导致「数据没来」式的慢",
+        "机器层：磁盘 %util、内存不够导致 buffer pool 命中率低、swap",
+        "优化顺序：先治显性慢 SQL（加索引/改写法）→ 再治结构（分表、读写分离、缓存）→ 最后才考虑换硬件"
+      ],
+      "follow": [
+        "为什么说优化要先看「总耗时」而不是「单次最慢」？"
+      ]
+    },
+    {
+      "id": "c08-q20",
+      "ch": 8,
+      "kind": "concept",
+      "level": 5,
+      "src": "edited",
+      "tag": [
+        "MySQL",
+        "版本升级"
+      ],
+      "q": "线上全是 MySQL 5.5，有没有办法搭 5.5 到 5.7 的复制",
+      "a": [
+        "能搭，但限制很多：从 5.5 升到 5.7 跨了两个大版本，5.7 作为从库时不能开 GTID（5.5 主库不理解），只能用传统的文件名+位点方式",
+        "必须保证 binlog_format 一致（都用 ROW 最稳）、字符集一致、server-id 不冲突",
+        "5.7 从库对 5.5 主库发来的一些语句兼容性有差异（比如时间精度、默认 sql_mode 更严格），要逐条验证",
+        "官方立场是不推荐跨大版本复制，正确路径是就地升级：5.5 → 5.6 → 5.7，每一跳都跑 mysql_upgrade 并验证",
+        "更现实的迁移方案：用逻辑备份（mysqldump/mydumper）导出到 5.7，配合短暂停写；或者用中间件双写过渡",
+        "如果只是想在 5.7 上做只读查询，跨版本复制当临时方案可以接受，但要在上线前跑完整业务回归",
+        "面试里说清「能做但别做、以及为什么」比直接答「能」更有分量"
+      ],
+      "follow": [
+        "就地升级 5.5→5.7 中间最容易踩的坑是什么？"
+      ]
+    },
+    {
+      "id": "c08-q21",
+      "ch": 8,
+      "kind": "concept",
+      "level": 4,
+      "src": "doc",
+      "tag": [
+        "MySQL",
+        "explain"
+      ],
+      "q": "EXPLAIN 执行计划的关键字段，type、key、rows、Extra 分别代表什么，type 从优到劣怎么排",
+      "a": [
+        "type 是访问类型，从好到差：system > const > eq_ref > ref > range > index > ALL",
+        "system / const：最多匹配一行，直接当常量用；eq_ref：通过唯一索引关联，每行只匹配一条；ref：普通索引等值匹配",
+        "range：索引范围扫描（between、>、in）；index：扫整个索引（比全表好一点，因为不用回表）；ALL：全表扫描，要重点关注",
+        "key：实际用到的索引；possible_keys 是候选索引，两个不一样说明优化器选了别的",
+        "rows：预估要扫描的行数，不是精确值；filtered 是过滤后剩余比例，rows × filtered 才是预估返回行数",
+        "Extra：Using filesort（额外排序，没走索引顺序）、Using temporary（用了临时表，常见于 group by / distinct）、Using index（覆盖索引，好现象）、Using where（回表后再过滤）",
+        "判断标准：大表上出现 ALL + Using filesort 基本就是要优化；但小表 ALL 很正常，不要迷信",
+        "注意：explain 的 rows 是统计信息估算的，统计信息过期会严重偏差，必要时 ANALYZE TABLE"
+      ],
+      "follow": [
+        "EXPLAIN 和 EXPLAIN ANALYZE 有什么区别？"
+      ]
+    },
+    {
+      "id": "c08-q22",
+      "ch": 8,
+      "kind": "code",
+      "level": 3,
+      "src": "doc",
+      "verify": true,
+      "tag": [
+        "MySQL",
+        "慢查询"
+      ],
+      "q": "MySQL 慢查询是什么，如何开启，分析时看哪些重点",
+      "a": [
+        "慢查询日志记录执行时间超过 long_query_time（默认 10 秒，生产一般调到 1 秒）的 SQL",
+        "开启：slow_query_log = ON，slow_query_log_file 指定路径；log_queries_not_using_indexes 可以额外记录没走索引的（日志量会大）",
+        "分析重点一：执行时间、扫描行数（Rows_examined）、返回行数（Rows_sent）的对比——扫了几十万只返回 10 条，基本就是索引失效或没走对索引",
+        "分析重点二：频率。一条 100ms 的 SQL 每秒跑 1000 次，比一条 3 秒的 SQL 每天跑一次危害大得多",
+        "分析重点三：锁等待时间。慢查询日志不记锁等待，要结合 performance_schema 或 SHOW ENGINE INNODB STATUS 看",
+        "工具：mysqldumpslow（自带，够用）、pt-query-digest（更强，能按指纹聚合）",
+        "优化动作：加索引、改写法（避免函数运算、隐式转换）、拆分大查询、加缓存；改完再跑一遍对比 rows 和耗时",
+        "记得把慢查询日志本身也纳入运维：日志过大要轮转，别让它把磁盘写满"
+      ],
+      "follow": [
+        "慢查询日志里没有的 SQL，能不能也很慢？"
+      ]
+    },
+    {
+      "id": "c08-q23",
+      "ch": 8,
+      "kind": "concept",
+      "level": 4,
+      "src": "doc",
+      "tag": [
+        "MySQL",
+        "索引失效"
+      ],
+      "q": "MySQL 索引失效的常见场景有哪些",
+      "a": [
+        "like 以 % 开头：LIKE '%abc'，前缀不确定就没法走索引；LIKE 'abc%' 可以",
+        "索引列上做运算或函数：WHERE DATE(create_time)='2024-01-01'、WHERE id+1=10，都会失效；改成范围条件或函数索引（8.0 支持）",
+        "隐式类型转换：字符串列传数字（WHERE phone=13800138000，phone 是 varchar），会全表扫",
+        "OR 连接的条件里有字段没索引：整个条件退化成全表扫；可以拆成两条 SQL 用 UNION",
+        "不符合最左前缀：联合索引 (a,b,c)，只查 b 或 c 用不上；查 a,c 也只能用到 a",
+        "NOT IN、!=、IS NOT NULL 在大范围上通常走不了索引（IS NULL 可以）",
+        "排序字段和索引顺序不一致：order by 的列和索引列顺序不同，会产生 filesort",
+        "统计信息过期导致优化器判断走索引更贵：ANALYZE TABLE 更新统计信息",
+        "补充一个容易忽略的：字符集或排序规则不一致的连表，也会让索引失效"
+      ],
+      "follow": [
+        "为什么 or 里有没索引的字段会让整条 SQL 变慢？"
+      ]
+    },
+    {
+      "id": "c08-q24",
+      "ch": 8,
+      "kind": "concept",
+      "level": 4,
+      "src": "doc",
+      "tag": [
+        "MySQL",
+        "高可用"
+      ],
+      "q": "MHA 的高可用原理是什么，有什么优缺点",
+      "a": [
+        "MHA（Master High Availability）由 manager 节点和 node 节点组成：manager 定时探测主库，node 在每台机器上负责日志抓取和切换动作",
+        "主库故障时：manager 找出复制延迟最小的从库，把其他从库没同步到的 relay log 补给它，提升为新的主库，再让其他从库重新指向新主",
+        "优点：不需要额外硬件（省钱）、切换一般 10～30 秒、能尽量补回差异数据",
+        "缺点：只能一主多从、没有写负载均衡；manager 本身是单点，要好就得配两个但切换逻辑会打架",
+        "要纠正原文一处：MHA 的「补 binlog」是靠对比 relay log 差异来补，不是完全自动——如果差异太大或日志已丢，还是得人工处理",
+        "现代替代方案：MGR（MySQL 组复制，官方自带，强一致但性能有损耗）、Orchestrator（拓扑管理更强，能自动发现）、云上的 RDS 高可用直接内置",
+        "选型：老系统继续 MHA 也没问题；新系统优先 MGR 或云托管，少维护一套脚本"
+      ],
+      "follow": [
+        "MHA 的 manager 自己挂了怎么办？"
+      ]
+    },
+    {
+      "id": "c08-q25",
+      "ch": 8,
+      "kind": "concept",
+      "level": 4,
+      "src": "doc",
+      "tag": [
+        "MySQL",
+        "读写分离"
+      ],
+      "q": "MySQL 读写分离怎么实现",
+      "a": [
+        "应用层实现：代码里配两个数据源，写走主库、读走从库；简单直接，但业务代码要感知，多数据源切换容易出错",
+        "中间件层：Mycat、ProxySQL、ShardingSphere，对应用透明，按 SQL 类型路由；ProxySQL 还能做连接池、读负载均衡、故障摘除",
+        "判断读写不能只看 SQL 开头：select ... for update、事务里的读都要走主库，否则会读到旧数据",
+        "核心难点是主从延迟导致的一致性问题：写完之后立刻读，从库可能还没重放",
+        "解决读一致：写后短时间内强制走主库（绑定会话）、按 GTID 等待从库追平（WAIT_FOR_EXECUTED_GTID_SET）、或者关键读直接走主库",
+        "从库故障：中间件要能把坏掉的从库摘掉，否则读请求一直超时",
+        "要提醒：读写分离不是性能银弹，主库写能力没变；写入瓶颈要靠分库分表或换架构"
+      ],
+      "follow": [
+        "刚下单就查不到订单，怎么在两个层面解决？"
+      ]
+    },
+    {
+      "id": "c08-q26",
+      "ch": 8,
+      "kind": "concept",
+      "level": 5,
+      "src": "doc",
+      "tag": [
+        "MySQL",
+        "MVCC"
+      ],
+      "q": "什么是 MVCC，InnoDB 的 MVCC 是怎么实现的",
+      "a": [
+        "MVCC 是多版本并发控制：读不加锁也能读到一致的数据快照，读写不互相阻塞",
+        "三要素：隐藏字段（DB_TRX_ID 最后修改的事务 id、DB_ROLL_PTR 指向 undo 的上一个版本）、undo log 版本链、ReadView",
+        "读的时候沿 undo 版本链往回找，找到对当前事务可见的那个版本",
+        "ReadView 记录四个东西：m_ids（活跃事务列表）、min_trx_id、max_trx_id、creator_trx_id，用它判断某个版本对自己是否可见",
+        "RC（读已提交）每次查询都新建 ReadView，所以能看到别人已提交的新数据",
+        "RR（可重复读）只在第一次查询时建 ReadView 并复用，所以整个事务看到的是同一个快照——这就是「可重复读」的由来",
+        "快照读（普通 select）走 MVCC，当前读（select for update、update、delete）走锁，两者要分清楚",
+        "代价：undo log 会膨胀，长事务会拖住 purge，导致 undo 空间撑爆——长事务是 MVCC 最大的敌人"
+      ],
+      "follow": [
+        "长事务为什么会把 undo 空间撑大？"
+      ]
+    },
+    {
+      "id": "c08-a01",
+      "ch": 8,
+      "kind": "acceptance",
+      "level": 3,
+      "src": "written",
+      "tag": [
+        "验收",
+        "慢查询"
+      ],
+      "q": "【验收一】订单表 5000 万行，运营说「后台按时间查订单要等 20 秒」。EXPLAIN 显示 type=ALL、rows=5000万、Extra=Using filesort。写出你的诊断和优化步骤，并说明每一步能带来多少收益。",
+      "a": [
+        "先确认 SQL 长什么样：大概率是 where create_time between ? and ? order by id 这种，条件列没索引或者排序列和条件列不在一个索引里",
+        "第一步加联合索引 (create_time, id)：范围条件在前、排序列在后，能同时解决「扫描」和「排序」两个问题，20 秒 → 百毫秒级",
+        "第二步看覆盖索引：如果只查字段少，把这些字段带进索引（create_time, id, status, amount），避免回表，还能再快一截",
+        "第三步看深分页：如果还是有 limit 100000,20 这种，改成按上次最大 id 翻页（where id > ? order by id limit 20），或者延迟关联（先查主键再 join）",
+        "第四步看时间范围：不加限制地查「全部历史」谁优化都白搭，要在业务上限制范围（最近 30 天/3 个月）",
+        "第五步：如果单表确实太大，按时间分区或者归档冷数据，热表行数降到千万级以内",
+        "验证：改完再 EXPLAIN，确认 type 变成 range、Extra 里 filesort 消失；再压测对比 P99",
+        "要警惕：直接在 5000 万行的表上 ALTER TABLE 加索引会锁表，用 online DDL（ALGORITHM=INPLACE）或者 gh-ost，在低峰做"
+      ],
+      "follow": [
+        "为什么联合索引要把范围条件放在排序列前面？"
+      ]
+    },
+    {
+      "id": "c08-a02",
+      "ch": 8,
+      "kind": "acceptance",
+      "level": 4,
+      "src": "written",
+      "tag": [
+        "验收",
+        "主从延迟"
+      ],
+      "q": "【验收二】早上 10 点业务反馈「刚下的单，列表里刷不出来，过几分钟才有」。一查主从延迟 30 分钟。说出你的排查顺序、可能原因和长短两套解决方案。",
+      "a": [
+        "先确认现象：是只有部分用户、还是全部；延迟是持续的还是某个时间点突然的——「30 分钟」这种量级通常是某个大事务或大 DDL 卡住了 SQL 线程",
+        "第一步看 SHOW SLAVE STATUS：Slave_SQL_Running 是否 Yes、Seconds_Behind_Master、正在执行的位点；再 SHOW PROCESSLIST 看 SQL 线程在跑什么",
+        "第二步看是不是大事务/大 DDL：主库那边 9 点半有没有跑批量更新、加索引、删数据；这类操作会让从库串行回放卡很久",
+        "第三步看从库负载：CPU、磁盘 IO、有没有慢查询在抢资源；从库上跑重查询会让延迟雪上加霜",
+        "第四步看是不是单线程回放瓶颈：slave_parallel_workers 是否为 0（5.6 默认）或很小",
+        "短解（当天止血）：把延迟大的从库从读流量里摘掉、写后关键读强制走主库、临时加大 slave_parallel_workers 并观察",
+        "长解：开并行复制（8.0 用 LOGICAL_CLOCK/WRITESET）、大事务拆小批量、DDL 用 gh-ost 在低峰做、从库硬件对齐主库",
+        "架构解：读一致性用 GTID 等待（WAIT_FOR_EXECUTED_GTID_SET）或关键业务强制主库；再往上就是分库分表把单库压力降下来",
+        "最后要治根：复盘这次大事务是谁在什么时候跑的，加审批和窗口限制"
+      ],
+      "follow": [
+        "为什么「写后立即读」在读写分离架构里天然会出问题？"
+      ]
+    },
+    {
+      "id": "c08-a03",
+      "ch": 8,
+      "kind": "acceptance",
+      "level": 5,
+      "src": "written",
+      "tag": [
+        "验收",
+        "高可用方案"
+      ],
+      "q": "【验收三】要为一套核心业务（日订单 20 万、数据量 500G）设计 MySQL 方案：高可用、备份、扩容。给定 RPO ≤ 5 分钟、RTO ≤ 30 分钟，说明你的架构选择、备份策略和演练方式。",
+      "a": [
+        "先算容量：500G 数据、日增几 GB，单机放得下；瓶颈在写入 QPS 和随机 IO，不是容量，所以先不急着分库分表",
+        "高可用：一主两从（同机房一主一从 + 异地一从），用 Orcestor/MGR 或云 RDS 主备；RTO 30 分钟靠自动切换 + 应用重连，RPO 5 分钟靠 binlog 实时传输 + 半同步",
+        "读写分离：读走从库，写走主库；关键读写用 GTID 等待保证一致",
+        "备份：每周一次全量（XtraBackup 热备）+ 每日增量 + binlog 持续归档到对象存储，保留 30 天；备份加密、异地一份",
+        "RPO 校验：算清楚「全量 + 增量 + binlog 回放」最快能恢复到哪个时间点，确保 ≤5 分钟",
+        "RTO 校验：切换演练实际计时——DNS/VIP 切换 + 应用重连 + 数据校验，要压到 30 分钟内",
+        "演练：每季度做一次真恢复（恢复到测试库、跑校验脚本对比行数和关键业务数据），半年做一次真切换（把主库停掉看自动切换）",
+        "扩容路径：先加从库分担读 → 再垂直升级（SSD、内存）→ 最后才是分库分表（按用户 ID 哈希或按时间分表）",
+        "别忘了配套：慢查询治理、连接池上限、监控告警（主从延迟、连接数、磁盘、QPS）、变更窗口和回滚预案"
+      ],
+      "follow": [
+        "RPO 5 分钟这个指标，光靠每天一次全量备份能满足吗？"
+      ]
+    }
+  ],
+  "mc": {
+    "c08-q01": {
+      "options": [
+        "连接层 → SQL 层（解析/优化/执行）→ 存储引擎层 → 物理存储，查询缓存在 8.0 已经删掉了",
+        "MySQL 只有一层，所有逻辑都在存储引擎里",
+        "先走存储引擎再走 SQL 解析，顺序是从下往上",
+        "SQL 层和存储引擎层是同一层，只是叫法不同"
+      ],
+      "answer": 0
+    },
+    "c08-q02": {
+      "options": [
+        "整数 tinyint/int/bigint，金额用 decimal（精确），时间 datetime/timestamp，另有 varchar/text/enum/json",
+        "存金额用 float 就行，反正差不了多少",
+        "MySQL 只有 int 和 varchar 两种类型",
+        "timestamp 和 datetime 完全等价，随便用哪个"
+      ],
+      "answer": 0
+    },
+    "c08-q03": {
+      "options": [
+        "索引加快查询但拖慢写入；MyISAM 在 .MYI，InnoDB 默认每表一个 .ibd（数据和索引在一起）",
+        "InnoDB 的表数据和索引都存在 ibdata1 里，不会有 .ibd 文件",
+        "索引只加快写，不影响读",
+        "索引建得越多，数据库越快"
+      ],
+      "answer": 0
+    },
+    "c08-q04": {
+      "options": [
+        "连接认证 → 解析器 → 优化器选执行计划 → 执行器调存储引擎取数 → 返回结果",
+        "SQL 直接交给存储引擎，中间没有解析和优化",
+        "优化器负责做语法检查，解析器负责选索引",
+        "查询缓存是必经的一步，8.0 也还在用"
+      ],
+      "answer": 0
+    },
+    "c08-q05": {
+      "options": [
+        "SELECT * FROM customer WHERE uid > 100 ORDER BY uid ASC LIMIT 10;",
+        "SELECT * FROM customer WHERE uid > 100 ORDER BY uid LIMIT 10 DESC;",
+        "SELECT * FROM customer HAVING uid > 100 ORDER BY uid LIMIT 10;",
+        "SELECT * FROM customer WHERE uid > 100 SORT BY uid LIMIT 10;"
+      ],
+      "answer": 0
+    },
+    "c08-q06": {
+      "options": [
+        "mysqldump 是逻辑备份（InnoDB 要 --single-transaction 才不锁表），XtraBackup 是 InnoDB 物理热备，大库首选",
+        "mysqldump 在 InnoDB 上锁行，不影响其他会话",
+        "XtraBackup 能备份所有存储引擎，包括 MyISAM",
+        "mysqlhotcopy 是最新的推荐方案"
+      ],
+      "answer": 0
+    },
+    "c08-q07": {
+      "options": [
+        "先定 RPO/RTO，再定备份内容和频率，异地存放并加密，最重要的是定期做恢复演练",
+        "备份只要每天跑一次全量就行，其他不用考虑",
+        "备份文件放在数据库同一块盘上最方便恢复",
+        "只要备份任务没报错，就说明备份一定可用"
+      ],
+      "answer": 0
+    },
+    "c08-q08": {
+      "options": [
+        "冷备停库做、一致性好但业务中断；热备不停业务，但更吃资源，优点是不中断而不是更快",
+        "热备份一定比冷备份快",
+        "冷备份期间业务照常读写，没有影响",
+        "热备份不需要考虑一致性"
+      ],
+      "answer": 0
+    },
+    "c08-q09": {
+      "options": [
+        "存储引擎是数据怎么存怎么取的实现；InnoDB 支持事务和行锁，MyISAM 只有表锁，现在默认 InnoDB",
+        "MyISAM 支持事务，InnoDB 不支持",
+        "一个数据库里所有表必须是同一个存储引擎",
+        "存储引擎只影响磁盘占用，不影响并发"
+      ],
+      "answer": 0
+    },
+    "c08-q10": {
+      "options": [
+        "记录所有改数据的操作，用于主从复制、时间点恢复和变更审计；8.0 默认 ROW 格式",
+        "binlog 记录所有 select 查询，用于加速查询",
+        "binlog 是 InnoDB 的崩溃恢复日志，和 redo log 是一回事",
+        "binlog 默认就是开启的，不用配置"
+      ],
+      "answer": 0
+    },
+    "c08-q11": {
+      "options": [
+        "用 PURGE BINARY LOGS 按时间或文件清理，8.0 用 binlog_expire_logs_seconds 自动过期；绝对不能 rm 文件",
+        "直接 rm 掉旧文件最省事，MySQL 会自动更新索引",
+        "binlog 不能清理，只能一直留着",
+        "清理 binlog 之前不需要确认备份情况"
+      ],
+      "answer": 0
+    },
+    "c08-q12": {
+      "options": [
+        "主库 dump 线程发 binlog，从库 IO 线程写 relay log，SQL 线程重放；GTID 和并行复制是现在的改进",
+        "主库主动把整个数据库文件拷给从库，每秒一次",
+        "从库直接读主库的磁盘，不需要日志",
+        "复制是同步的，主库要等从库确认才提交"
+      ],
+      "answer": 0
+    },
+    "c08-q13": {
+      "options": [
+        "原子性靠 undo、持久性靠 redo、隔离性靠锁和 MVCC、一致性是目的；InnoDB 默认 RR",
+        "ACID 里的 C 指的是「可压缩」",
+        "InnoDB 默认隔离级别是读未提交",
+        "事务只保证不丢数据，不保证并发互不干扰"
+      ],
+      "answer": 0
+    },
+    "c08-q14": {
+      "options": [
+        "跳过授权表启动 → 登录 → 5.7/8.0 用 ALTER USER 改密码 → 去掉参数重启",
+        "5.7 直接 update user set authentication_string='123456' 就能用",
+        "只能重装数据库，没有别的办法",
+        "把 datadir 删掉重建就能重置密码"
+      ],
+      "answer": 0
+    },
+    "c08-q15": {
+      "options": [
+        "一台机器跑多个 mysqld，端口/目录/socket 各自独立；可用多配置文件或 mysqld_multi、systemd 模板管理",
+        "多实例就是同一个 mysqld 开多个库",
+        "多实例共用同一个 datadir 和端口",
+        "多实例只能靠 Docker 实现，物理机上做不了"
+      ],
+      "answer": 0
+    },
+    "c08-q16": {
+      "options": [
+        "删匿名用户、最小权限、禁止 root 远程、监听内网、强密码、操作留审计；网络隔离比改端口有用得多",
+        "把端口从 3306 改成 13306 就安全了",
+        "给所有账号 SUPER 权限方便运维",
+        "数据库安全只需要设置一个复杂密码"
+      ],
+      "answer": 0
+    },
+    "c08-q17": {
+      "options": [
+        "从库硬件差、单线程回放、大事务和大 DDL、从库还跑查询、网络延迟；并行复制能缓解大部分",
+        "主从延迟只可能是网络问题",
+        "Seconds_Behind_Master 显示 0 就一定没有延迟",
+        "从库配置越差越省资源，不影响复制"
+      ],
+      "answer": 0
+    },
+    "c08-q20": {
+      "options": [
+        "能搭但不能开 GTID，binlog 格式要一致，官方不推荐跨两个大版本，正路是先升级再用",
+        "完全可以，而且建议直接开 GTID 提高可靠性",
+        "5.5 和 5.7 之间做不了复制",
+        "只要版本号不同就一定复制不了"
+      ],
+      "answer": 0
+    },
+    "c08-q21": {
+      "options": [
+        "type 从优到劣 system>const>eq_ref>ref>range>index>ALL；key 实际用的索引，rows 预估扫描行数，Extra 看 filesort 和 temporary",
+        "type 从优到劣是 ALL>index>range>ref>const",
+        "rows 是查询返回的精确行数",
+        "Extra 里出现 Using index 说明 SQL 很慢"
+      ],
+      "answer": 0
+    },
+    "c08-q22": {
+      "options": [
+        "记录超过 long_query_time 的 SQL；开 slow_query_log，重点看扫描行数 vs 返回行数、执行频率和总耗时",
+        "慢查询日志记录所有 SQL，包括 select 和 show",
+        "long_query_time 默认 1 秒，改不了",
+        "只要单条 SQL 慢就优先优化它，不用看频率"
+      ],
+      "answer": 0
+    },
+    "c08-q23": {
+      "options": [
+        "like 前导通配符、列上做函数运算、隐式类型转换、or 里有没索引的字段、不符合最左前缀、统计信息过期",
+        "只要建了索引，任何查询都能用上",
+        "like '%abc' 也能走索引",
+        "or 条件不会影响索引使用"
+      ],
+      "answer": 0
+    },
+    "c08-q24": {
+      "options": [
+        "manager 探测主库，故障时选延迟最小的从库并补日志后提升；优点是省硬件，缺点是没有写负载均衡、manager 本身是单点",
+        "MHA 能自动做数据补偿，不需要人工介入",
+        "MHA 自带读负载均衡功能",
+        "MHA 是 MySQL 官方自带的组件"
+      ],
+      "answer": 0
+    },
+    "c08-q25": {
+      "options": [
+        "应用层双数据源或中间件（ProxySQL/Mycat）路由；难点是主从延迟导致刚写完读不到，要强制走主或等 GTID",
+        "读写分离就是把所有读都发给从库，不用管别的",
+        "中间件能解决主从延迟，业务不用改",
+        "读写分离之后主库的写能力也一起提升了"
+      ],
+      "answer": 0
+    },
+    "c08-q26": {
+      "options": [
+        "多版本并发控制：靠隐藏事务 id、undo 版本链和 ReadView 实现读不加锁；RR 复用快照，RC 每次新建",
+        "MVCC 就是给每行加一把锁，读的时候也要抢锁",
+        "RR 和 RC 的 ReadView 创建时机一样",
+        "MVCC 会让长事务变得更安全，不需要限制"
+      ],
+      "answer": 0
+    }
+  }
+}
