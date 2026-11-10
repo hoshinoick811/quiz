@@ -25,6 +25,11 @@
       "id": 5,
       "title": "系统架构篇",
       "file": "ch05.json"
+    },
+    {
+      "id": 6,
+      "title": "磁盘管理及存储篇",
+      "file": "ch06.json"
     }
   ]
 }
