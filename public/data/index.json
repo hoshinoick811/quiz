@@ -40,6 +40,11 @@
       "id": 8,
       "title": "数据库管理篇",
       "file": "ch08.json"
+    },
+    {
+      "id": 9,
+      "title": "Linux 云计算篇",
+      "file": "ch09.json"
     }
   ]
 }

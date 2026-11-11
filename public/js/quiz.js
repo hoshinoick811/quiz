@@ -116,7 +116,9 @@
     let s = seed >>> 0;
     for (let i = a.length - 1; i > 0; i--) {
       s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-      const j = s % (i + 1);
+      /* 取高位而不是低位：LCG 的低位周期极短（s % 4 只在两种模式间跳），
+         直接 s % (i+1) 会让正确项稳稳落在 A（实测 199 题里 60 题在 A）。 */
+      const j = (s >>> 11) % (i + 1);
       const t = a[i]; a[i] = a[j]; a[j] = t;
     }
     return a;

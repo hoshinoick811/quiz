@@ -1,0 +1,1532 @@
+{
+  "items": [
+    {
+      "id": "c09-q01",
+      "ch": 9,
+      "kind": "concept",
+      "level": 2,
+      "src": "edited",
+      "tag": [
+        "云计算",
+        "选型"
+      ],
+      "q": "使用云计算有哪些优点？可否列举哪些平台用于大规模云计算？",
+      "a": [
+        "弹性：需要机器几分钟就开出来，高峰扩容、低谷释放，不用为了峰值长期养一堆物理机",
+        "成本模型从「资本支出」变成「运营支出」：机房、电力、带宽、硬件折旧都转给服务商，前期不用压一大笔钱",
+        "高可用与灾备：多可用区、跨地域复制是现成的，自建机房要做到同水平很贵",
+        "底座免运维：硬件故障、网络、机房环境由服务商兜底，团队只关注业务",
+        "全局部署：就近开资源，几十个地域一键就能铺开",
+        "大规模云计算平台：公有云是 AWS / Azure / GCP / 阿里云 / 腾讯云 / 华为云；私有云是 OpenStack、VMware vSphere；托管容器是 阿里云 ACK、AWS EKS、GKE",
+        "要纠正原文：它把 Apache Hadoop、MapReduce 列为「用于大规模云计算的平台」，这两个是分布式存储/计算框架，不是云平台——它们跑在云上算负载，不是云本身",
+        "Hadoop 之所以被写进来，是因为早年「云」和「大数据集群」被混为一谈；现在的标准答案是公有云 + 私有云 + 托管 K8s 三类"
+      ],
+      "follow": [
+        "云计算和虚拟化到底是什么关系？"
+      ]
+    },
+    {
+      "id": "c09-q02",
+      "ch": 9,
+      "kind": "concept",
+      "level": 2,
+      "src": "edited",
+      "tag": [
+        "云计算",
+        "服务模型"
+      ],
+      "q": "简述云计算的实现方式有哪些？",
+      "a": [
+        "先分清两个维度，原文把它们并列成一个列表了：部署形态（公有/私有/混合/社区云）和服务模型（IaaS/PaaS/SaaS）",
+        "私有云：自建、资源独享，可控性和合规性最好，成本最高，要自己有运维能力；典型 OpenStack、VMware",
+        "公有云：服务商提供，按量付费，弹性最好；典型 阿里云、AWS、腾讯云",
+        "混合云：核心数据在私有云、弹性业务在公有云，现在最主流的落地方式",
+        "IaaS：给虚拟机、网络、块存储，用户管操作系统及以上；典型 OpenStack、EC2",
+        "PaaS：给运行时和中间件，用户只管应用和代码；典型 云数据库 RDS、托管 Redis、托管 K8s",
+        "SaaS：直接给能用的软件；典型 企业邮箱、钉钉、Salesforce",
+        "规律：越往下用户可控性越低、越省心；选型就看「这一层团队愿不愿意自己管」",
+        "原文说 Private 的典型软件是「传统物理机」，其实私有云的关键是「有云平台的自动化能力」，纯物理机叫传统 IDC，不叫私有云"
+      ],
+      "follow": [
+        "为什么说 PaaS 对「只会开发不会运维」的团队友好？"
+      ]
+    },
+    {
+      "id": "c09-q03",
+      "ch": 9,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "OpenStack",
+        "组件"
+      ],
+      "q": "描述一下 OpenStack 的常见组件有哪些？",
+      "a": [
+        "Nova：计算，管理虚拟机实例的创建、调度、迁移、快照",
+        "Neutron：网络，提供二层/三层、路由、安全组、浮动 IP，插件化设计（原文写成「Netron」是错别字）",
+        "Cinder：块存储，给虚机挂持久卷，后端常接 Ceph（原文说「工作中 ceph 用的比较多」是对的）",
+        "Glance：镜像服务，存和检索磁盘镜像",
+        "Swift：对象存储，RESTful API 存非结构化数据",
+        "Keystone：认证、授权和服务目录（service catalog）——所有组件都要先过它，原文这段排版串行串得厉害",
+        "Horizon：Web 控制台",
+        "Heat：编排，用模板（HOT/YAML）把一堆资源一次性创建出来；原文说「任务编排」偏了，它是资源编排，不是定时任务",
+        "Ironic：裸机管理（原文写成「IRonic」）",
+        "Octavia：负载均衡即服务，是 Neutron LBaaS 的替代者",
+        "Ceilometer：计量与监控数据采集；后续版本把它拆了，存储交给 Gnocchi——原文说「缺乏后续发展」不准确，是拆分重构",
+        "Sahara：给 OpenStack 提供大数据集群部署，近年维护不活跃，生产慎用（原文写「生产可用」要打个问号）",
+        "记忆法：认证 Keystone、计算 Nova、网络 Neutron、块存储 Cinder、对象存储 Swift、镜像 Glance、界面 Horizon、编排 Heat、裸机 Ironic、负载均衡 Octavia"
+      ],
+      "follow": [
+        "Keystone 挂了，为什么整朵云都用不了？"
+      ]
+    },
+    {
+      "id": "c09-q04",
+      "ch": 9,
+      "kind": "concept",
+      "level": 2,
+      "src": "edited",
+      "tag": [
+        "OpenStack",
+        "架构"
+      ],
+      "q": "OpenStack 的核心服务有哪些？",
+      "a": [
+        "原文答 compute、networking、storage、dashboard，对应的就是 Nova、Neutron、Cinder/Swift、Horizon",
+        "但真正最核心的是 Keystone：认证、授权、服务目录，它挂了整朵云谁都进不去，原文没列它是个明显的遗漏",
+        "Glance 也得算核心：没有镜像根本开不出虚机",
+        "所以标准回答是六个：Keystone（认证）、Nova（计算）、Neutron（网络）、Cinder+Swift（存储）、Glance（镜像）、Horizon（控制台）",
+        "一条链记下来：你是谁 → 你有多少算力 → 网络怎么通 → 数据放哪 → 系统从哪装 → 你怎么看到",
+        "面试里如果只答四个词，追问「那认证服务是哪个」就答不上来了"
+      ],
+      "follow": [
+        "生产环境里 Keystone 一般怎么做高可用？"
+      ]
+    },
+    {
+      "id": "c09-q05",
+      "ch": 9,
+      "kind": "concept",
+      "level": 1,
+      "src": "edited",
+      "tag": [
+        "Docker",
+        "容器"
+      ],
+      "q": "容器退出后，通过 docker ps 命令查看不到，数据会丢失么？",
+      "a": [
+        "不会丢。容器退出后状态是 Exited，不是消失了：docker ps 只列运行中的容器，要看全部得用 docker ps -a",
+        "容器的可写层留在宿主机磁盘上，docker start 能把它拉起来接着用，文件还在",
+        "真正会丢数据的动作只有三个：docker rm 删容器（可写层一起删）、docker run --rm（退出即删）、docker system prune",
+        "所以关键数据必须放 volume 或 bind mount，不能放在容器可写层——可写层是跟着容器生命周期走的",
+        "容易混的一点：restart policy 重启，可写层保留；docker run 新建一个容器，那是全新的空可写层",
+        "排查用：docker inspect -f '{{.State.Status}}' 容器名 看状态，docker diff 容器名 看可写层改了哪些文件"
+      ],
+      "follow": [
+        "为什么生产上要求容器「无状态」？"
+      ]
+    },
+    {
+      "id": "c09-q06",
+      "ch": 9,
+      "kind": "code",
+      "level": 2,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "Docker",
+        "资源限制"
+      ],
+      "q": "如何控制容器占用系统资源（CPU、内存）的份额？",
+      "a": [
+        "CPU 权重（相对）：docker run -c 512 或 --cpu-shares=512，只在 CPU 争抢时按比例分配，机器闲着时一个容器照样能吃满",
+        "CPU 硬上限：--cpus=1.5（等价 1.5 核）、--cpuset-cpus=0,1（绑核，减少上下文切换）",
+        "内存硬上限：-m 512m / --memory=512m，超了内核 OOM kill，退出码 137",
+        "内存 + swap 的总量：--memory-swap=1g；不写时默认是 --memory 的两倍",
+        "最关键的一句：--cpu-shares 是软限制（权重），--cpus / --memory 是硬限制（上限），面试要能把这两类分清楚",
+        "K8s 里的对应物就是 request（调度依据，作用类似 shares）和 limit（硬上限）",
+        "常见误判：容器里 free 看到的是宿主机内存，别拿它判断容器的限额；要看限额读 /sys/fs/cgroup/memory.max",
+        "验证：docker stats 观察实际用量，压测时看是被限流还是被 OOM"
+      ],
+      "follow": [
+        "--cpu-shares 和 --cpus 到底差在哪？"
+      ]
+    },
+    {
+      "id": "c09-q07",
+      "ch": 9,
+      "kind": "code",
+      "level": 2,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "Docker",
+        "存储"
+      ],
+      "q": "如何更改 Docker 的默认存储设置？",
+      "a": [
+        "原文说「用 Linux 软连接」，能跑但属于土办法：docker 启动时要对目录做 mount，软链接在某些版本和 storage driver 下会出问题",
+        "正规做法是改 /etc/docker/daemon.json，加一行 { \"data-root\": \"/data/docker\" }",
+        "改之前先停服务：systemctl stop docker；把原 /var/lib/docker 整个 rsync 到新盘，再改配置、启服务",
+        "只改配置不搬数据，等于所有镜像和容器全部消失——这是线上最常踩的坑，改完 docker images 一片空就懵了",
+        "同一个 daemon.json 里顺便可以配 storage-driver（overlay2）、log-driver 和 log-opts 限制日志大小，防止容器日志把盘写满",
+        "验证：docker info 里确认 Docker Root Dir 已经变成新路径",
+        "顺序记牢：停服务 → 搬数据 → 改配置 → 启服务 → 验证，少一步就可能丢镜像"
+      ],
+      "follow": [
+        "容器日志把磁盘写满了怎么处理？"
+      ]
+    },
+    {
+      "id": "c09-q08",
+      "ch": 9,
+      "kind": "concept",
+      "level": 2,
+      "src": "edited",
+      "tag": [
+        "Docker",
+        "编排"
+      ],
+      "q": "Docker 公司的三款用于解决多容器分布式软件可移植部署的问题，推出的编排工具有哪些？",
+      "a": [
+        "Docker Compose：单机多容器编排，一个 yml 描述一组服务，开发、测试、小规模生产最常用",
+        "Docker Swarm（Swarm mode）：Docker 原生集群，把多个 Docker 引擎聚成集群，用标准 Docker API，上手快但功能少",
+        "Docker Machine：给本地或云主机装 Docker 引擎的工具，2021 年已归档停止维护",
+        "这是道历史题，标准答案还是这三件套；但必须补一句现状，否则显得知识停在 2016 年",
+        "现实格局：Swarm 和 Machine 基本退出生产，编排的事实标准是 Kubernetes；Compose 依然活得很好，主要用于单机和开发环境",
+        "深层原因：Swarm 赢不了 K8s 不是因为难用，而是生态——K8s 有 CNCF 生态、云厂商托管、Helm/Operator 这套体系"
+      ],
+      "follow": [
+        "为什么 Swarm 输给了 Kubernetes？"
+      ]
+    },
+    {
+      "id": "c09-q09",
+      "ch": 9,
+      "kind": "code",
+      "level": 2,
+      "src": "edited",
+      "verify": true,
+      "tag": [
+        "Docker",
+        "Compose"
+      ],
+      "q": "简单描述 Docker-compose 编排和管理多容器的过程？",
+      "a": [
+        "第一步 Dockerfile：定义应用镜像，包括基础镜像、依赖、启动命令",
+        "第二步 compose 文件（新版叫 compose.yaml）：定义服务、镜像或构建上下文、端口映射、环境变量、依赖、网络、数据卷",
+        "第三步 docker compose up -d 创建并在后台启动；加 --build 强制重建镜像",
+        "常用命令：docker compose ps 看状态、logs -f 看日志、restart 单个服务、down 清理（-v 连数据卷一起删，慎用）",
+        "启动顺序靠 depends_on 只保证「先起」，不保证「就绪」；要真正等依赖可用，得写 healthcheck + depends_on: condition: service_healthy",
+        "新版命令是 docker compose（空格），老的 docker-compose（带横杠）是 v1 的 Python 实现，已经 EOL",
+        "易错点：改了 Dockerfile 不 --build，up 起来还是老镜像；改了 compose 里 image 的 tag 才需要重新 pull"
+      ],
+      "follow": [
+        "depends_on 为什么不能保证依赖服务「可用」？"
+      ]
+    },
+    {
+      "id": "c09-q10",
+      "ch": 9,
+      "kind": "concept",
+      "level": 3,
+      "src": "doc",
+      "tag": [
+        "云计算",
+        "虚拟化"
+      ],
+      "q": "简单描述云计算与虚拟化的区别？",
+      "a": [
+        "虚拟化是一种技术，云计算是一种资源交付模式，云计算不等于虚拟化",
+        "虚拟化解决「一台物理机切成多台」，云计算解决「资源像水电一样按需取用、按量计费」",
+        "云计算的那些特征——自助服务、快速弹性、资源池化、可计量——虚拟化本身给不了，要靠上层平台（调度、计费、编排、租户隔离）实现",
+        "反例最能说明问题：裸金属云、Serverless 里没有传统虚拟化，但仍然是云计算",
+        "反过来，装个 VMware 跑几台虚机也不叫云，因为还得人工开单、没有弹性、没有自助",
+        "一句话：虚拟化是「怎么切」，云计算是「怎么卖、怎么用」"
+      ],
+      "follow": [
+        "容器算不算虚拟化？"
+      ]
+    },
+    {
+      "id": "c09-q11",
+      "ch": 9,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "Hadoop",
+        "大数据"
+      ],
+      "q": "写出 Hadoop 集群常用进程以及进程含义",
+      "a": [
+        "NameNode：HDFS 的主节点，管命名空间（目录树）和块到 DataNode 的映射，本身不存实际数据",
+        "DataNode：存实际数据块，定期向 NameNode 发心跳和块报告",
+        "SecondaryNameNode：定期做 checkpoint，把 fsimage 和 edits 合并；它**不是** NameNode 的热备，挂了对集群没影响（原文这点说对了，很多人答错）",
+        "真正的 HDFS 高可用要靠 JournalNode + ZKFC + 两个 NameNode（Active/Standby），原文没提，而这恰恰是追问「那怎么 HA」的落点",
+        "ResourceManager：YARN 的主，管集群资源和作业调度，给 NodeManager 分配 Container",
+        "NodeManager：每个节点上的代理，管本机 Container 的生命周期和资源上报",
+        "要纠正原文：RM 调度的是 NodeManager 上的 Container，不是「DataNode 上的工作」——HDFS 是存储、YARN 是计算资源，两套东西",
+        "记忆：HDFS 三件（NN/DN/SNN）+ YARN 两件（RM/NM），一共五个进程"
+      ],
+      "follow": [
+        "SecondaryNameNode 和 HA 里的 Standby NameNode 有什么区别？"
+      ]
+    },
+    {
+      "id": "c09-q12",
+      "ch": 9,
+      "kind": "concept",
+      "level": 2,
+      "src": "edited",
+      "tag": [
+        "云计算",
+        "选型"
+      ],
+      "q": "在使用云计算平台前，用户需要考虑哪些必要的方面？",
+      "a": [
+        "原文给的五条（数据丢失、数据存储、业务连续性、正常运行时间、数据完整性）都是同一个角度——数据安全，太窄了",
+        "数据与合规：数据落在哪个区域、是否跨境、等保/行业监管能不能过、加密和密钥归谁管",
+        "可用性：SLA 具体数值（99.9% 还是 99.95%，换算成每月停机时间差好几倍）、是否多可用区、故障时的赔付和沟通机制",
+        "成本：按量、包年包月、预留实例怎么混；出网流量往往是大头，只看实例单价会算错账",
+        "锁定风险：是不是只能用它的专有服务，迁走要多少成本，有没有开源的退出路径",
+        "技术匹配：网络延迟、已有技术栈兼容性、和 IDC 打通的方式（专线还是 VPN）",
+        "运维边界：责任共担模型里哪些归服务商（硬件、虚拟化层），哪些还得自己管（系统、配置、数据、权限）",
+        "安全边界：IAM 权限模型、审计日志、VPC 隔离、是否支持密钥托管",
+        "说到底先想清楚「哪些必须自己控」，剩下的才好放心交给云"
+      ],
+      "follow": [
+        "责任共担模型下，云上出了数据泄露算谁的？"
+      ]
+    },
+    {
+      "id": "c09-q13",
+      "ch": 9,
+      "kind": "concept",
+      "level": 2,
+      "src": "edited",
+      "tag": [
+        "云计算",
+        "架构"
+      ],
+      "q": "云架构有别于传统架构的特点有哪些？",
+      "a": [
+        "按需弹性：资源随负载增减，分钟级甚至秒级到位（原文的「按需满足硬件要求」就是这个意思）",
+        "资源池化与多租户：物理资源池化后切给很多租户，靠隔离保证互不影响",
+        "服务化 / API 化：所有能力都是 API，才能被自动化调用和编排，这是「弹」得起来的前提",
+        "自动化：开机器、扩缩容、发布、故障替换都不靠人点",
+        "分布式与无状态：计算节点可以随时被替换，状态外置到数据库/对象存储",
+        "可计量：按用量计费，反过来说要求每项资源都可度量",
+        "故障是常态：设计上默认实例会挂，用冗余 + 自愈换整体可用，而不是追求单点永不坏",
+        "最本质的差别：传统架构是「给一个系统规划够用的容量」，云架构是「先给一个系统设上限，再让它自己伸缩」"
+      ],
+      "follow": [
+        "为什么云上要按「无状态、可替换」来设计服务？"
+      ]
+    },
+    {
+      "id": "c09-q14",
+      "ch": 9,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "云计算",
+        "NIST"
+      ],
+      "q": "简单列出云计算的基本特点？",
+      "a": [
+        "按需自助服务：用户自己开资源，不用提工单等人批（原文的「自助式配置和自动取消配置」）",
+        "广泛网络接入：通过标准网络协议随时可用，手机电脑都能访问",
+        "资源池化：多租户共享资源池，用户不需要知道、也无法指定具体在哪台物理机上",
+        "快速弹性：能快速扩容，对用户来说资源近乎无限、随时能买（原文的「弹性和可扩展性」）",
+        "可计量服务：按用量计量计费，账目透明（原文的「自助计费的使用模式」）",
+        "这五条是 NIST 的定义，原文给的四条基本对上了，但漏了「资源池化」和「网络接入」两条",
+        "容易混的是另一组：三个服务模型 IaaS/PaaS/SaaS、四种部署模型（公有/私有/混合/社区）——这两组也是 NIST 定义的，别和五个特点混着答",
+        "面试时先答「NIST 定了五条」再展开，比零散列四条更有说服力"
+      ],
+      "follow": [
+        "为什么「资源池化」和「多租户」几乎是一回事？"
+      ]
+    },
+    {
+      "id": "c09-q15",
+      "ch": 9,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "Kubernetes",
+        "定位"
+      ],
+      "q": "什么是 Kubernetes？Kubernetes 与 Docker 有什么关系？",
+      "a": [
+        "Kubernetes 是容器编排系统：负责部署、扩缩容、负载均衡、自愈、滚动更新、服务发现、配置管理",
+        "定位要说准：K8s 不是容器运行时，它自己不跑容器；它通过 CRI 调 containerd 或 CRI-O，这些再用 runc 按 OCI 规范起容器",
+        "Docker 是容器的「构建 + 运行」工具：Dockerfile 构建镜像，dockerd 管容器生命周期",
+        "关系：Docker 造镜像，K8s 编排一堆跑这些镜像的容器；镜像是 OCI 标准，所以 Docker 构建的镜像照样能在 K8s 里跑",
+        "关于「K8s 1.24 移除 dockershim」：移除的是 K8s 里调用 Docker 的那层适配器，不是淘汰 Docker。这个说法被传得很歪，面试主动澄清是加分项",
+        "一句话：Docker 解决「单个容器怎么跑」，K8s 解决「成百上千个容器怎么协同」",
+        "原文说「Kubernetes 不是一个容器化平台，而是一个多容器管理解决方案」，方向是对的，只是别把 CRI/OCI 这层讲丢"
+      ],
+      "follow": [
+        "那 containerd 和 Docker 是什么关系？"
+      ]
+    },
+    {
+      "id": "c09-q16",
+      "ch": 9,
+      "kind": "concept",
+      "level": 2,
+      "src": "edited",
+      "tag": [
+        "Kubernetes",
+        "部署"
+      ],
+      "q": "Kubernetes 如何简化容器化部署？",
+      "a": [
+        "统一入口：一个 yaml 描述应用（Deployment + Service），不用登录每台机器手工装环境",
+        "声明式 + 自愈：写「要 3 个副本」，挂了自动拉起，不用人盯着",
+        "滚动更新和回滚：一条命令换版本，出问题一条命令回滚",
+        "服务发现：Pod IP 会变，Service 名字不变，调用方不用关心实例在哪台机器",
+        "资源调度：不用自己算哪台机器还有余量，调度器按 request 分配",
+        "配置与密钥外置：ConfigMap/Secret 与镜像解耦，同一镜像多环境部署",
+        "要诚实的一点：它简化的是「多机多容器的运维」，代价是复杂度从「装机器」转移到了「写 yaml 和懂原理」——小团队上来就上 K8s 反而更累",
+        "原文只答了「要负载均衡、扩展、监控，K8s 与云无关」这层，缺了自愈、滚动更新、服务发现这些真正省事的能力"
+      ],
+      "follow": [
+        "声明式部署和命令式部署的区别在哪？"
+      ]
+    },
+    {
+      "id": "c09-q17",
+      "ch": 9,
+      "kind": "concept",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "Kubernetes",
+        "负载均衡"
+      ],
+      "q": "你对 Kubernetes 的负载均衡器有什么了解？",
+      "a": [
+        "分两层看：集群内的 Service 负载均衡（kube-proxy 用 iptables/IPVS 把请求分到各 Pod），和集群外的入口（NodePort / LoadBalancer / Ingress）",
+        "内部负载均衡器：ClusterIP 类型，只在集群内可达，kube-proxy 负责分发——原文说的「自动平衡负载并分配容器」就是它",
+        "外部负载均衡器：LoadBalancer 类型，向云厂商申请一个 ELB/CLB 把外部流量导进来；自建集群靠 MetalLB 提供这个能力",
+        "Service 四种类型里，跟负载均衡直接相关的是 NodePort 和 LoadBalancer",
+        "Ingress 本身不是负载均衡器，它是七层路由规则（按域名/路径分发），真正干活的是 Ingress Controller（Nginx/Traefik）",
+        "kube-proxy 的 IPVS 模式在大规模下明显优于 iptables：iptables 是链式线性匹配，几千个 Service 之后规则同步会明显变慢",
+        "补一句现状：越来越多集群用 Gateway API 替代 Ingress，思路一样，职责划分更细"
+      ],
+      "follow": [
+        "Ingress 和 LoadBalancer 类型的 Service 该怎么选？"
+      ]
+    },
+    {
+      "id": "c09-q18",
+      "ch": 9,
+      "kind": "scenario",
+      "level": 3,
+      "src": "edited",
+      "tag": [
+        "微服务",
+        "架构演进"
+      ],
+      "q": "你如何看待公司从单一服务转向微服务并部署其服务容器？",
+      "a": [
+        "先给判断：方向对，但不能「推倒重写」，最稳的是绞杀者模式——先在单体旁边切出一两个边界清晰的模块，跑通再继续，原文说的「逐个构建、一两个先迁移」就是这个路子",
+        "第一步是拆边界，不是拆代码：按业务能力和数据归属划服务，两个服务共用一个库，说明拆错了",
+        "容器化与编排：每个服务一个镜像，用 Deployment + Service 管，配合 HPA 做弹性",
+        "配套必须跟上：配置中心、服务发现、链路追踪、集中日志、指标监控——没有这些，微服务会变成「分布式单体 + 排障地狱」",
+        "数据一致性：跨服务不能靠本地事务，用 Saga / 最终一致 + 幂等；分布式事务别硬上 2PC",
+        "发布：独立发布是微服务最大的收益，要靠 CI/CD 和灰度发布兑现，否则拆了还是得一起上线",
+        "组织也要跟上：康威定律，团队边界和服务边界对齐，否则拆完还是互相等",
+        "风险：网络调用变多，延迟和故障面都变大，必须默认「下游会失败」，超时、重试、熔断、降级都要有"
+      ],
+      "follow": [
+        "怎么判断两个模块该不该拆成两个服务？"
+      ]
+    },
+    {
+      "id": "c09-q19",
+      "ch": 9,
+      "kind": "scenario",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "DevOps",
+        "成本"
+      ],
+      "q": "公司希望通过维持最低成本来提高其效率和技术运营速度，你认为公司将如何实现这一目标？",
+      "a": [
+        "先把「成本」拆成三块：机器成本、人力成本、时间成本。发布慢、故障恢复慢烧掉的人力往往比机器贵得多",
+        "技术上：容器化 + 云上弹性伸缩，把「按峰值买机器」改成「按实际用量买」，这是最直接的一刀",
+        "流程上：CI/CD 自动化，减少人工发布和重复操作，人少干机械活",
+        "可观测性：没有监控和追踪，一次故障排查耗掉的人天远超省下的机器钱",
+        "成本可视化：按团队/项目打标签分摊账单，谁用谁认账，才有优化动力",
+        "具体省钱手段：包年包月覆盖基线 + 按量覆盖峰值、回收长期空跑的实例、镜像瘦身（少存储、少拉取时间）、日志采样和保留期管理",
+        "警惕过度优化：为了省一点机器钱把架构搞复杂，人力成本反而涨，这是最常见的赔本买卖",
+        "拿得出量化指标才算做到位：单次发布耗时、MTTR、单请求成本、资源利用率",
+        "原文只说了「先建 CI/CD 再上云再上 K8s」，方向对，但没提成本可视化和「人力才是最贵的成本」，这是这类问题的关键"
+      ],
+      "follow": [
+        "弹性伸缩在什么情况下反而更贵？"
+      ]
+    },
+    {
+      "id": "c09-q20",
+      "ch": 9,
+      "kind": "scenario",
+      "level": 4,
+      "src": "edited",
+      "tag": [
+        "多云",
+        "架构"
+      ],
+      "q": "假设公司希望在不同的云基础架构上运行各种工作负载，从裸机到公共云。公司将如何在不同界面的存在下实现这一目标？",
+      "a": [
+        "核心思路是统一抽象层：把底层差异收敛到一个控制面，上层只认这一个面",
+        "计算统一：K8s 作为统一调度层——裸机用 Ironic 或 MetalLB 补齐，公有云用托管 K8s，上层 workload 用同一套 yaml",
+        "集群统一：Cluster API 统一管理多集群的创建和生命周期，Karmada/KubeFed 做跨集群调度",
+        "网络统一：跨云 overlay（Calico/Cilium 的跨集群方案）或专线/VPN 打通，Service 域名要能跨集群解析",
+        "存储统一：对象存储走 S3 兼容接口（各云 OSS、MinIO、Ceph RGW 都兼容）；块存储差异最大，有状态服务尽量留在同一朵云",
+        "配置统一：Helm/Kustomize 分层 + GitOps（Argo CD/Flux），环境差异只体现在 values 和 overlay 里",
+        "镜像统一：一个私有 registry（Harbor），各云拉同一份镜像，避免「各云镜像不一致」这种低级故障",
+        "要承认边界：完全一致的体验做不到，尤其是存储、网络和 IAM；现实目标通常是「应用层可移植，基础设施层各自适配」",
+        "原文说的「不同界面」用统一控制台或 GitOps 收敛，别让每朵云各有一套操作流程——那才是真正的运维成本"
+      ],
+      "follow": [
+        "多云和混合云有什么区别，什么规模才值得做多云？"
+      ]
+    },
+    {
+      "id": "c09-q21",
+      "ch": 9,
+      "kind": "concept",
+      "level": 2,
+      "src": "doc",
+      "tag": [
+        "Docker",
+        "虚拟化"
+      ],
+      "q": "Docker 与虚拟机的区别？",
+      "a": [
+        "虚拟机是硬件虚拟化：Hypervisor 上跑完整的 Guest OS，每台虚机有自己的内核",
+        "容器是操作系统级虚拟化：共享宿主机内核，只打包应用和依赖，靠 namespace 做隔离、cgroup 做限额",
+        "开销：虚机镜像 GB 级、启动分钟级、内存按整个 OS 算；容器镜像 MB 级、启动秒级、只占应用内存",
+        "隔离：虚机是硬件级隔离，强；容器共享内核，隔离弱，容器逃逸可能影响宿主机",
+        "由此带来几个具体限制：容器里不能改大部分内核参数、不能加载自定义内核模块、`uname -r` 看到的是宿主机内核",
+        "选型：同一台机器跑很多无状态服务 → 容器；要不同内核版本、强隔离、混合操作系统 → 虚机",
+        "现实是「虚机里跑容器」：K8s 的节点本身就是虚机，两者不是替代关系"
+      ],
+      "follow": [
+        "为什么容器里 `uname -r` 看到的是宿主机内核？"
+      ]
+    },
+    {
+      "id": "c09-q22",
+      "ch": 9,
+      "kind": "concept",
+      "level": 3,
+      "src": "doc",
+      "tag": [
+        "Docker",
+        "Dockerfile"
+      ],
+      "q": "Dockerfile 中 COPY 和 ADD 的区别；CMD 和 ENTRYPOINT 的区别？",
+      "a": [
+        "COPY：只做本地→镜像的文件复制，语义简单可预测，优先用",
+        "ADD：除了复制，还会自动解压本地 tar（gz/bz2/xz）和从 URL 下载；URL 下载不会解压、不校验、不缓存，生产不建议用它拉包",
+        "结论：能用 COPY 就用 COPY，ADD 只在「确实要把本地 tar 自动解开」时用",
+        "CMD：容器的默认命令/默认参数，docker run 后面跟命令会**整体替换** CMD",
+        "ENTRYPOINT：固定入口，docker run 后面的参数会作为**参数追加**给它",
+        "经典组合：ENTRYPOINT [\"/app/server\"] + CMD [\"--port=8080\"]，运行时只覆盖 CMD 那一段",
+        "两种写法必须区分：exec 形式 [\"java\",\"-jar\"] 直接起进程、能收到信号；shell 形式会被包成 /bin/sh -c，PID 1 是 sh，SIGTERM 传不到应用，优雅停机失效",
+        "要清空从基础镜像继承来的 ENTRYPOINT，必须写 ENTRYPOINT []，只写 CMD 盖不住"
+      ],
+      "follow": [
+        "为什么 shell 形式的 CMD 会让容器优雅退出失效？"
+      ]
+    },
+    {
+      "id": "c09-q23",
+      "ch": 9,
+      "kind": "concept",
+      "level": 3,
+      "src": "doc",
+      "tag": [
+        "Docker",
+        "镜像"
+      ],
+      "q": "如何减小 Docker 镜像体积？",
+      "a": [
+        "换轻量基础镜像：alpine、debian-slim、distroless、scratch；别拿 ubuntu:latest 当底座",
+        "多阶段构建：builder 阶段装编译工具链，运行阶段只 COPY 产物，构建依赖不进最终镜像",
+        "合并 RUN，并且清理必须和安装写在同一层：apt/yum 缓存、源码包要和 install 放在同一个 RUN 里，分开删是白删（上一层的数据还在镜像里）",
+        ".dockerignore：把 .git、node_modules、测试数据排除出构建上下文，既减体积也加快构建",
+        "只装运行时依赖：npm ci --omit=dev、pip install --no-cache-dir",
+        "用工具量化而不是靠猜：docker history 看每层多大，dive 看哪些文件是垃圾",
+        "别为了体积硬上 alpine：glibc 依赖的二进制在 musl 上会直接跑不起来，这是最常见的「瘦身瘦出故障」"
+      ],
+      "follow": [
+        "为什么 `RUN install && rm -rf 缓存` 必须写在同一行？"
+      ]
+    },
+    {
+      "id": "c09-q24",
+      "ch": 9,
+      "kind": "concept",
+      "level": 3,
+      "src": "doc",
+      "tag": [
+        "Docker",
+        "存储"
+      ],
+      "q": "Docker Volume（数据卷）是什么，和 bind mount 有什么区别？",
+      "a": [
+        "volume：由 Docker 管理，Linux 上落在 /var/lib/docker/volumes/<name>/_data，生命周期独立于容器——删容器数据还在",
+        "bind mount：直接映射宿主机任意路径，容器里改的就是宿主机上的那份文件",
+        "volume 优点：跨平台行为一致、可备份（docker volume 命令）、性能好、不依赖宿主机目录结构；缺点：不便于直接看文件，跨主机要额外方案",
+        "bind mount 优点：直观、开发调试方便（改代码立即生效）、能挂配置文件；缺点：依赖宿主机路径、UID/权限容易错乱、可移植性差",
+        "还有 tmpfs：只放内存，重启就没了，适合缓存和敏感临时数据",
+        "生产原则：数据库这类要有持久卷（volume 或 K8s PVC），配置用挂载文件，日志直接打到 stdout 交给采集端",
+        "--mount 比 -v 更明确（不会自动创建目录、路径写错会直接报错），脚本里推荐用 --mount"
+      ],
+      "follow": [
+        "容器里用 root 写 bind mount 的文件，宿主机上属主是谁？"
+      ]
+    },
+    {
+      "id": "c09-q25",
+      "ch": 9,
+      "kind": "concept",
+      "level": 3,
+      "src": "doc",
+      "tag": [
+        "Kubernetes",
+        "Pod"
+      ],
+      "q": "K8s 的 Pod 是什么？为什么一个 Pod 里会有多个容器？",
+      "a": [
+        "Pod 是 K8s 的最小调度单元：调度、扩缩容、生命周期都以 Pod 为单位，一个 Pod 里的容器必然在同一节点",
+        "共享三样东西：网络命名空间（同一个 IP，端口不能冲突）、IPC、UTS，以及挂载的 volume",
+        "为什么要多个容器：主业务容器 + 辅助容器（sidecar 做日志采集、代理、证书轮换；init 容器做初始化）",
+        "判断标准是「紧耦合、共享生命周期」：日志 sidecar 要读主容器的日志目录、要跟它一起扩缩容，才该放同一个 Pod",
+        "实现细节：每个 Pod 有一个 pause（sandbox）容器持有网络命名空间，业务容器都加入它——这就是「共享同一个 IP」的原理",
+        "反面教材：把两个独立服务塞进一个 Pod，扩缩容和发布节奏被绑死，这是常见的设计错误",
+        "1.28 之后有原生 sidecar：把 init container 的 restartPolicy 设为 Always，启动顺序和退出顺序都比普通容器可控"
+      ],
+      "follow": [
+        "什么情况下你绝对不会把两个容器放进同一个 Pod？"
+      ]
+    },
+    {
+      "id": "c09-q26",
+      "ch": 9,
+      "kind": "concept",
+      "level": 4,
+      "src": "doc",
+      "tag": [
+        "Kubernetes",
+        "控制平面"
+      ],
+      "q": "K8s 控制平面（master）有哪些组件，各自作用是什么？",
+      "a": [
+        "kube-apiserver：集群唯一入口，认证、鉴权、准入控制都在这里，所有组件和客户端都只跟它说话；它也是唯一读写 etcd 的组件",
+        "etcd：分布式 KV（Raft 共识），存集群全部状态；丢了基本等于集群没了，必须备份",
+        "kube-scheduler：决定 Pod 放哪个节点——先过滤出可行节点，再打分排序；它只把「绑定结果」写回 apiserver，不直接动容器",
+        "kube-controller-manager：跑一堆控制器循环（Deployment/ReplicaSet/Node/Endpoint…），不断把实际状态拉向期望状态",
+        "cloud-controller-manager：对接云厂商（LB、路由、节点生命周期），把云相关逻辑从核心组件里拆出去",
+        "高可用要点：apiserver 无状态可多副本 + 前面挂 VIP/LB；etcd 用奇数个（3 或 5）；scheduler 和 controller-manager 多副本靠选主，同一时刻只有一个在干活",
+        "一句话记：apiserver 是门，etcd 是账本，scheduler 是派活，controller 是纠偏"
+      ],
+      "follow": [
+        "etcd 挂了，正在运行的 Pod 会立刻停吗？"
+      ]
+    },
+    {
+      "id": "c09-q27",
+      "ch": 9,
+      "kind": "concept",
+      "level": 3,
+      "src": "doc",
+      "tag": [
+        "Kubernetes",
+        "Node"
+      ],
+      "q": "Node 节点组件 kubelet、kube-proxy 各自作用？",
+      "a": [
+        "kubelet：节点上的总代理，从 apiserver 拿 PodSpec，调 CRI 起容器，跑探针，上报节点和 Pod 状态",
+        "kube-proxy：维护本节点的 iptables/IPVS 规则，让 Service 的 ClusterIP 能落到具体 Pod——它是「转发规则的维护者」，不是转发数据的那一跳（IPVS 模式由内核转发）",
+        "容器运行时：containerd 或 CRI-O，通过 CRI 被 kubelet 调用，再经 runc 按 OCI 规范创建容器",
+        "CNI 插件：给 Pod 分配 IP、配路由（Calico/Flannel/Cilium）",
+        "这三者常被混：kubelet 管「容器怎么起来」，kube-proxy 管「流量怎么到容器」，CNI 管「IP 从哪来」",
+        "补充：新版已有 nftables 模式，iptables 在大集群下的性能问题正在被替换掉"
+      ],
+      "follow": [
+        "kube-proxy 能不能不装？"
+      ]
+    },
+    {
+      "id": "c09-q28",
+      "ch": 9,
+      "kind": "concept",
+      "level": 4,
+      "src": "doc",
+      "tag": [
+        "Kubernetes",
+        "工作负载"
+      ],
+      "q": "Deployment、StatefulSet、DaemonSet、Job、CronJob 的使用场景区别？",
+      "a": [
+        "Deployment：无状态应用（Web/API），滚动更新 + 回滚，管的是 ReplicaSet；最常用",
+        "StatefulSet：有状态应用（MySQL/Redis/Kafka），稳定网络标识（pod-0/1/2 + headless service）、有序启停、每个副本独立 PVC",
+        "DaemonSet：每个（匹配的）节点跑一个，用于日志采集（Fluent Bit）、监控 agent（node-exporter）、CNI、还有 kube-proxy 本身",
+        "Job：一次性任务，跑完就结束（数据迁移、批处理），可设 completions 和 parallelism",
+        "CronJob：按 cron 表达式定时创建 Job（备份、报表），要配 concurrencyPolicy 和保留历史数，否则历史 Job 会把 etcd 撑大",
+        "还有 ReplicaSet：一般被 Deployment 代管，不要直接使用",
+        "选型口诀：要稳定身份和持久存储 → StatefulSet；每个节点都要一个 → DaemonSet；跑完就完 → Job/CronJob；其余 → Deployment"
+      ],
+      "follow": [
+        "为什么 StatefulSet 必须配 headless service？"
+      ]
+    },
+    {
+      "id": "c09-q29",
+      "ch": 9,
+      "kind": "concept",
+      "level": 3,
+      "src": "doc",
+      "tag": [
+        "Kubernetes",
+        "Service"
+      ],
+      "q": "K8s Service 有哪 4 种类型？",
+      "a": [
+        "ClusterIP（默认）：集群内虚拟 IP，只能集群内访问，由 kube-proxy 分发到 Pod",
+        "NodePort：在每个节点上开一个端口（默认范围 30000-32767），外部通过 节点IP:端口 访问；它是 LoadBalancer 类型的基础",
+        "LoadBalancer：向云厂商申请外部 LB（自建集群用 MetalLB），自动给公网 IP，最省事，但每个 Service 一个 LB，成本高",
+        "ExternalName：不做代理，只返回一条 CNAME 记录，把集群内的名字映射到外部域名",
+        "补充一个不在这四种里但很重要的：headless service（clusterIP: None）不做负载均衡，DNS 直接返回所有 Pod IP，StatefulSet 靠它做稳定标识",
+        "生产最常见组合：内部用 ClusterIP，集群入口用 Ingress Controller（它自己是 LoadBalancer 或 NodePort 类型的 Service）"
+      ],
+      "follow": [
+        "NodePort 为什么不适合直接给业务用？"
+      ]
+    },
+    {
+      "id": "c09-q30",
+      "ch": 9,
+      "kind": "scenario",
+      "level": 4,
+      "src": "doc",
+      "tag": [
+        "Kubernetes",
+        "排查"
+      ],
+      "q": "Pod 处于 Pending 状态，完整排查思路是什么？",
+      "a": [
+        "第一步永远是 kubectl describe pod <name>，看 Events 最后几行，原因九成写在那儿；再补 kubectl get events --sort-by=.lastTimestamp",
+        "资源不足：Events 里出现 Insufficient cpu/memory → 调小 request、加节点、开 cluster-autoscaler",
+        "调度被拒：nodeSelector/affinity 不匹配、节点有 taint 没有对应 toleration、节点 NotReady 或被 cordon",
+        "存储卡住：Pod 有 PVC 但 PV 没绑定，Events 显示 FailedScheduling 或挂载失败 → 查 PVC 状态、StorageClass、后端存储",
+        "镜像拉不下来：ImagePullBackOff/ErrImagePull，此时 Pod 阶段仍是 Pending（容器还没起来），别以为「Pending 就一定是调度问题」",
+        "区分技巧：完全没 Events、且 request 超过节点可分配量 → 调度问题；有 Events「Failed to pull image」→ 拉取问题",
+        "别死磕日志：Pending 的 Pod 容器根本不存在，kubectl logs 不会有输出，这时候看 describe 和事件",
+        "最后确认是真缺资源还是 request 设太大：kubectl describe node 看 Allocated resources"
+      ],
+      "follow": [
+        "Pod 一直 Pending 但节点明明还有空闲内存，可能是什么原因？"
+      ]
+    },
+    {
+      "id": "c09-q31",
+      "ch": 9,
+      "kind": "scenario",
+      "level": 3,
+      "src": "doc",
+      "tag": [
+        "Kubernetes",
+        "排查"
+      ],
+      "q": "Pod 处于 ImagePullBackOff 状态，排查思路是什么？",
+      "a": [
+        "先看 kubectl describe pod 的 Events，把原因分成四类：401/403（认证）、not found（名字错）、timeout（网络/DNS）、certificate（自签仓库）",
+        "核对镜像名和 tag：仓库地址、命名空间、tag 拼写；用 latest 还会因为拉取策略产生歧义",
+        "私有仓库要配 imagePullSecret，并在 Pod 的 spec.imagePullSecrets 里引用；先在节点上手动 docker pull 验证凭证是否有效",
+        "节点网络：能不能解析并访问镜像仓库（尤其仓库在集群外、跨机房时），看节点上的 DNS、路由和防火墙",
+        "节点上的运行时配置：insecure-registry（HTTP 仓库没配这个一定失败）、镜像加速器、磁盘是否写满",
+        "排查顺序固定下来：节点手动拉一次 → 比对名称 → 检查 secret → 检查网络/DNS → 检查仓库端限流或镜像被删",
+        "注意 imagePullPolicy：Always 会在每次启动都拉，仓库一抖重启就失败；IfNotPresent 在发布场景更稳妥"
+      ],
+      "follow": [
+        "节点上手动 docker pull 能成功，但 Pod 拉不下来，可能是什么原因？"
+      ]
+    },
+    {
+      "id": "c09-q32",
+      "ch": 9,
+      "kind": "concept",
+      "level": 4,
+      "src": "doc",
+      "tag": [
+        "Kubernetes",
+        "资源"
+      ],
+      "q": "什么是资源 request 和 limit？区别是什么，OOMKill 在 K8s 里怎么触发？",
+      "a": [
+        "request：调度时保证的最小资源，调度器按它计算节点余量；CPU 的 request 同时决定 CPU 权重",
+        "limit：运行时硬上限，超过就动手",
+        "最关键的分野：CPU 是「可压缩资源」，超了只是被 cgroup 限流（变慢），不会杀；内存是「不可压缩资源」，超了只能 OOMKilled，退出码 137",
+        "QoS 等级由 request/limit 的关系决定：三者都设且相等 → Guaranteed；部分设置 → Burstable；都不设 → BestEffort；节点内存压力时按 BestEffort → Burstable → Guaranteed 的顺序驱逐",
+        "request 设太大会调度不上去、浪费资源；设太小会超卖，节点一挤全乱",
+        "内存不设 limit 的风险：Pod 能吃到节点 OOM，连累同节点的其它 Pod",
+        "Java 容器经典坑：堆没按 limit 设，JVM 以为宿主机有那么大内存，结果被 OOMKill——用 -XX:MaxRAMPercentage=75 让它按容器限额算"
+      ],
+      "follow": [
+        "给延迟敏感的服务设 CPU limit 会有什么副作用？"
+      ]
+    },
+    {
+      "id": "c09-q33",
+      "ch": 9,
+      "kind": "concept",
+      "level": 3,
+      "src": "doc",
+      "tag": [
+        "Kubernetes",
+        "调度"
+      ],
+      "q": "什么是污点 Taint 和容忍 Toleration？各自的用途？",
+      "a": [
+        "Taint 打在 **Node** 上，意思是「这个节点不欢迎某些 Pod」；Toleration 写在 **Pod** 上，意思是「我能忍这个污点」——方向千万别搞反",
+        "三种 effect：NoSchedule（新 Pod 不调度上来）、PreferNoSchedule（尽量不来）、NoExecute（已经在跑的 Pod 也会被赶走，可配 tolerationSeconds 留缓冲时间）",
+        "典型用途：master 节点打 node-role.kubernetes.io/control-plane:NoSchedule 禁止业务 Pod；GPU 节点打专用污点，只有带容忍的训练任务能上去；节点维护前打 NoExecute 优雅驱逐",
+        "toleration 是「允许」不是「必须」：能容忍不代表一定会调度上去，还得看 nodeSelector/亲和性",
+        "和亲和性的分工：taint 是节点侧「拒绝」，nodeAffinity 是 Pod 侧「挑选」——一个做排他，一个做选择",
+        "排错：Pod 一直 Pending，describe 里出现 node(s) had untolerated taint 就是这个原因"
+      ],
+      "follow": [
+        "为什么 master 节点通常要打 NoSchedule 而不是只靠「不部署业务」？"
+      ]
+    },
+    {
+      "id": "c09-q34",
+      "ch": 9,
+      "kind": "concept",
+      "level": 4,
+      "src": "doc",
+      "tag": [
+        "Kubernetes",
+        "发布"
+      ],
+      "q": "k8s 滚动更新策略 maxSurge、maxUnavailable 的含义？",
+      "a": [
+        "maxSurge：更新过程中最多可以比期望副本数**多**创建多少个 Pod，可写数量或百分比（默认 25%）",
+        "maxUnavailable：更新过程中最多允许多少个 Pod **不可用**（默认 25%）",
+        "两者不能同时为 0，否则更新推进不下去",
+        "想要零中断：maxUnavailable=0 + maxSurge>0，先起新的再杀旧的；但要求节点有额外资源，而且副本数大于 1 才有意义",
+        "想省资源：maxSurge=0 + maxUnavailable>0，先杀后起，会有短暂的容量下降",
+        "真正的前提是 readinessProbe：新 Pod 只有探针通过才算「可用」；没有探针时「容器起来了」就被当成可用，流量会打到还没准备好的实例上",
+        "更新卡住排查：kubectl rollout status 看进度，describe 新 Pod 为什么起不来；回滚用 kubectl rollout undo"
+      ],
+      "follow": [
+        "为什么说没有 readinessProbe 的滚动更新等于「假零中断」？"
+      ]
+    },
+    {
+      "id": "c09-q35",
+      "ch": 9,
+      "kind": "concept",
+      "level": 3,
+      "src": "doc",
+      "tag": [
+        "Kubernetes",
+        "存储"
+      ],
+      "q": "PV、PVC、StorageClass 是什么？它们的关系？",
+      "a": [
+        "PV：集群里的一块实际存储（NFS/Ceph RBD/云盘），由管理员或 provisioner 创建，是「供给侧」",
+        "PVC：用户（Pod）的存储申请，写「我要 10Gi、ReadWriteOnce」，是「需求侧」",
+        "绑定：PVC 按容量和 accessModes 匹配 PV，一对一绑定；绑定中的 PV 不会被别的 PVC 抢走",
+        "StorageClass：定义「用哪个 provisioner、什么参数」，PVC 指定 storageClassName 就能**动态**创建 PV，不用管理员手工建 —— 这就是动态供给",
+        "accessModes：RWO 单节点读写、ROX 多节点只读、RWX 多节点读写（需要 NFS/CephFS 这类共享文件系统）、RWOP 单 Pod 读写",
+        "reclaimPolicy：Delete（删 PVC 就连后端存储一起删，云盘默认）、Retain（保留，手工清理，重要数据用这个）",
+        "常见故障：PVC 一直 Pending → StorageClass 不存在、provisioner 没跑、容量不够、accessModes 不匹配"
+      ],
+      "follow": [
+        "为什么 RWO 的云盘在 StatefulSet 里 Pod 漂移会挂载失败？"
+      ]
+    },
+    {
+      "id": "c09-q36",
+      "ch": 9,
+      "kind": "scenario",
+      "level": 4,
+      "src": "doc",
+      "tag": [
+        "Kubernetes",
+        "排查"
+      ],
+      "q": "简述 Pod 生命周期的主要状态，CrashLoopBackOff 怎么排查？",
+      "a": [
+        "主要相位只有五个：Pending（已接受但没跑起来）、Running、Succeeded（正常退出）、Failed（异常退出）、Unknown（和节点失联）",
+        "CrashLoopBackOff、ImagePullBackOff、ContainerCreating、Terminating、OOMKilled 这些**不是相位**，是状态原因，回答时别混为一谈",
+        "CrashLoopBackOff 的机制：容器反复起→退，重启间隔指数退避（10s 起翻倍，最长 5 分钟），所以叫 BackOff",
+        "第一步：kubectl logs <pod> --previous 看**上一次**崩溃的日志，当前容器可能还没输出就死了",
+        "第二步看退出码：137 被 SIGKILL（多半 OOM 或被驱逐）、143 是 SIGTERM、1 是应用自己报错、0 是正常退出但 restartPolicy 又拉起——说明这任务根本不该用 Deployment 跑",
+        "第三步 kubectl describe 看 Last State 的 Reason/Exit Code，确认有没有 OOMKilled",
+        "常见原因：启动命令或参数错、配置/环境变量缺失、依赖的下游（DB/MQ）没就绪就退出、权限或只读文件系统、探针配得太激进",
+        "最容易被忽略的一个：livenessProbe 的 initialDelaySeconds 太短、阈值太紧，会把还在初始化的容器反复杀掉——「应用没问题却一直重启」多半是它"
+      ],
+      "follow": [
+        "livenessProbe 配得太激进会出现什么现象？"
+      ]
+    },
+    {
+      "id": "c09-q37",
+      "ch": 9,
+      "kind": "concept",
+      "level": 3,
+      "src": "doc",
+      "tag": [
+        "Kubernetes",
+        "网络"
+      ],
+      "q": "K8s 网络的 CNI 是什么？主流 CNI 插件有哪些？",
+      "a": [
+        "CNI 是「容器网络接口」规范：规定容器运行时怎么调用网络插件给容器配网络——建 veth 对、分配 IP、写路由、删网络",
+        "它解决两件事：给 Pod 分配 IP，以及保证 Pod 之间能通（同节点走网桥，跨节点走 overlay 或路由）",
+        "Calico：BGP 路由为主，性能好、可不用 overlay，支持 NetworkPolicy，生产最常用之一",
+        "Flannel：vxlan 或 host-gw，简单好装，但**不支持** NetworkPolicy，所以要求网络策略的集群一般用它配 Calico",
+        "Cilium：基于 eBPF，性能和可观测性最好，还支持七层策略，代价是复杂度高、对内核版本有要求",
+        "其它：Weave、Antrea、Kube-OVN，以及云厂商自己的 CNI",
+        "边界要讲清：CNI 只管「连得上」，不管 Service 的负载均衡（那是 kube-proxy），也不管加密（那是 WireGuard/IPsec 或 mTLS）",
+        "排错：Pod 有 IP 但跨节点不通 → 查节点间路由/BGP 邻居/overlay 端口（VXLAN 4789）有没有被防火墙挡"
+      ],
+      "follow": [
+        "Flannel 为什么做不了 NetworkPolicy？"
+      ]
+    },
+    {
+      "id": "c09-q38",
+      "ch": 9,
+      "kind": "concept",
+      "level": 4,
+      "src": "doc",
+      "tag": [
+        "Kubernetes",
+        "安全"
+      ],
+      "q": "NetworkPolicy 的作用是什么？",
+      "a": [
+        "它是 K8s 的「Pod 级防火墙」：按 label 选出一组 Pod，规定谁能进（ingress）、能出到哪（egress）",
+        "最关键的特性：**默认全通**。Pod 没被任何 NetworkPolicy 选中时不受限制；一旦被选中，该方向就变成「默认拒绝，只放行规则里写的」",
+        "选择器：podSelector / namespaceSelector / ipBlock，可以组合使用",
+        "典型用法：只允许 frontend 命名空间访问 backend 的 8080；只允许业务 Pod 出到数据库和 DNS；先来一条 default-deny 再按需放行",
+        "重要前提：**必须 CNI 支持**。Flannel 不支持，得配 Calico 一起用；Calico、Cilium、Antrea 支持",
+        "它工作在 L3/L4（IP + 端口），不是七层；七层策略要用 Cilium 的 L7 policy 或服务网格",
+        "排错：策略写对了还不通 → 先确认 CNI 真的实现了策略，再确认 label 打没打对、端口是容器端口而不是 Service 端口"
+      ],
+      "follow": [
+        "为什么「默认拒绝」策略上线前一定要先在测试环境验证？"
+      ]
+    },
+    {
+      "id": "c09-q39",
+      "ch": 9,
+      "kind": "code",
+      "level": 4,
+      "src": "doc",
+      "verify": true,
+      "tag": [
+        "Kubernetes",
+        "etcd",
+        "备份"
+      ],
+      "q": "K8s 集群里 etcd 的重要性体现在哪，etcd 备份怎么做？",
+      "a": [
+        "重要性：etcd 存的是集群全部对象（Deployment/Service/Secret/PV…）。正在跑的 Pod 不会因为 etcd 挂立刻停，但一旦要调度、重启、改配置就全废——没有 etcd 等于没有集群的账本",
+        "快照命令（v3 API）：ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key snapshot save /backup/etcd-$(date +%F).db",
+        "校验：etcdctl snapshot status <file> --write-out=table 看 hash、revision 和总大小",
+        "恢复：先停 kube-apiserver 和 etcd，etcdctl snapshot restore 到一个新的 data-dir，把 etcd 的 --data-dir 指过去，再逐个启 apiserver 和 etcd",
+        "生产做法：每个控制面节点各备一份，快照放对象存储且异地；定时任务 + 保留策略；**定期做恢复演练**——只备份不演练等于没备份",
+        "还要配 etcd 静态加密（EncryptionConfiguration）保护 Secret，否则备份文件里全是 base64 的明文密码",
+        "托管集群（EKS/ACK）用户不用自己管 etcd，但要确认控制面的备份策略和版本保留"
+      ],
+      "follow": [
+        "为什么 etcd 恢复必须先停 apiserver？"
+      ]
+    },
+    {
+      "id": "c09-q40",
+      "ch": 9,
+      "kind": "concept",
+      "level": 2,
+      "src": "doc",
+      "tag": [
+        "OpenStack",
+        "组件"
+      ],
+      "q": "简述 OpenStack 的 Nova、Neutron、Cinder、Glance 四个核心组件的作用？",
+      "a": [
+        "Nova：计算服务，管理虚拟机实例的创建、调度、迁移、快照；内部由 nova-api / nova-scheduler / nova-compute / nova-conductor 分工",
+        "Neutron：网络服务，提供网络、子网、路由、安全组、浮动 IP；插件化（ML2），常接 OVS 或 Linux Bridge",
+        "Cinder：块存储服务，给虚机提供持久化卷，后端接 Ceph/LVM/NFS；cinder-api / cinder-scheduler / cinder-volume 各司其职",
+        "Glance：镜像服务，存和检索虚机镜像，后端可以是文件系统、Swift 或 Ceph",
+        "再补两个最常被一起问的：Keystone 认证、Swift 对象存储",
+        "一句话记：Nova 造机器、Neutron 通网络、Cinder 给盘、Glance 给镜像、Keystone 给身份",
+        "容易混的一对：Cinder 是「块」（给虚机挂的盘），Swift 是「对象」（存图片、备份、静态文件），别搞反"
+      ],
+      "follow": [
+        "Nova 创建一台虚机的完整流程能说一下吗？"
+      ]
+    },
+    {
+      "id": "c09-q41",
+      "ch": 9,
+      "kind": "concept",
+      "level": 2,
+      "src": "doc",
+      "tag": [
+        "Docker",
+        "Compose"
+      ],
+      "q": "Docker Compose 与 Kubernetes 的主要区别？",
+      "a": [
+        "定位不同：Compose 是**单机**多容器编排（docker compose up），K8s 是**多机集群**编排",
+        "能力不同：Compose 只管「在这台机器上把这几个容器起来」，没有调度、没有自愈、没有跨节点、没有滚动更新；K8s 这些全有",
+        "复杂度不同：一个 yaml 就能跑起来 vs 要懂 Pod/Service/Ingress/PVC 一堆概念，还得维护控制面",
+        "使用场景：本地开发、CI 里的依赖服务、单机小规模部署 → Compose；生产多节点、要弹性伸缩和高可用 → K8s",
+        "衔接方案：kompose 可以把 compose.yaml 转成 K8s 资源；本地想验证 K8s 可以用 kind / k3s / minikube",
+        "一句话：Compose 编排「容器」，K8s 编排「集群」"
+      ],
+      "follow": [
+        "什么时候小团队用 K8s 反而是负担？"
+      ]
+    },
+    {
+      "id": "c09-q42",
+      "ch": 9,
+      "kind": "concept",
+      "level": 3,
+      "src": "doc",
+      "tag": [
+        "Kubernetes",
+        "Helm"
+      ],
+      "q": "什么是 Helm？helm3 的核心概念 chart、release 是什么？",
+      "a": [
+        "Helm 是 K8s 的包管理器，作用相当于 apt/yum 之于 Linux：把一堆 yaml 打包成可复用、可参数化的模板",
+        "chart：应用模板包，含 templates/（yaml 模板）、values.yaml（默认值）、Chart.yaml（元信息）",
+        "release：chart 在集群里的一个部署实例；同一个 chart 用不同 values 可以部署多个 release（dev/prod/多租户）",
+        "模板语法是 Go template + Sprig 函数，配合 values 参数化：{{ .Values.image.tag }}",
+        "常用命令：helm repo add/update、helm install -f values.yaml、helm upgrade --install、helm rollback、helm list、helm template（本地渲染调试，很重要）",
+        "Helm 3 去掉了 Tiller：不再需要一个常驻的高权限服务端组件，直接用 kubeconfig 权限操作，这是安全上的大改进",
+        "生态位置：Kustomize 走「无模板 + overlay」路线（已内置进 kubectl），GitOps 工具（Argo CD/Flux）常用 Helm 渲染 + Git 作为唯一真相"
+      ],
+      "follow": [
+        "Helm 和 Kustomize 该怎么选？"
+      ]
+    },
+    {
+      "id": "c09-q43",
+      "ch": 9,
+      "kind": "concept",
+      "level": 3,
+      "src": "doc",
+      "tag": [
+        "Kubernetes",
+        "安全"
+      ],
+      "q": "K8s 中 ConfigMap 和 Secret 的区别，使用上有哪些注意事项？",
+      "a": [
+        "ConfigMap：存非敏感明文配置（key-value 或整个文件），可以挂成环境变量或 volume 里的文件",
+        "Secret：存密码、token、证书、密钥；API 里以 base64 表示",
+        "最关键的一句：**Secret 的 base64 只是编码不是加密**，有读权限的人 base64 -d 就能还原——面试必须主动说这句",
+        "生产要配三件事：etcd 静态加密（EncryptionConfiguration）、RBAC 收紧谁能 get secret、敏感内容用 KMS/Vault 做真正加密",
+        "更新行为：以 volume 挂载的会自动更新（有延迟，秒级到分钟级）；以环境变量注入的**不会**更新，必须重启 Pod——常用 checksum 注解触发滚动更新",
+        "两者都按命名空间隔离，跨命名空间不能直接引用",
+        "别放大文件：etcd 单个对象有 1.5MB 上限，镜像或数据集不要塞进 ConfigMap"
+      ],
+      "follow": [
+        "Secret 更新之后业务为什么没生效？"
+      ]
+    },
+    {
+      "id": "c09-q44",
+      "ch": 9,
+      "kind": "concept",
+      "level": 3,
+      "src": "doc",
+      "tag": [
+        "Kubernetes",
+        "Sidecar"
+      ],
+      "q": "什么是 sidecar 模式，举个业务场景？",
+      "a": [
+        "定义：在同一个 Pod 里跟主业务容器并列跑一个辅助容器，共享网络和存储卷，用来扩展能力而不改业务代码",
+        "典型场景：日志采集（Fluent Bit 读共享日志目录）、服务网格代理（Envoy）、HTTPS 代理与证书轮换、配置同步、数据库连接代理",
+        "和 init 容器的区别：init 容器在业务容器**之前**跑、跑完就退出（做初始化、等待依赖）；sidecar 与业务容器**同时**运行、同生命周期",
+        "关键约束：共享网络命名空间，端口不能冲突；共享 Pod 生命周期，一起扩缩容、一起被驱逐——所以只把「紧耦合」的东西放进去",
+        "1.28 起有原生 sidecar：把 init container 的 restartPolicy 设为 Always，它保证在业务容器启动前就绪、业务容器退出后才停止",
+        "运维注意：sidecar 挂了会让整个 Pod 不 Ready，所以它的 readinessProbe 和资源 limit 一样要认真配",
+        "常见反例：把「顺便几个服务」都做成 sidecar，结果一个出问题全 Pod 挂，排查时也分不清是谁的日志"
+      ],
+      "follow": [
+        "sidecar 和 init container 的生命周期差别在哪？"
+      ]
+    },
+    {
+      "id": "c09-q45",
+      "ch": 9,
+      "kind": "scenario",
+      "level": 5,
+      "src": "doc",
+      "tag": [
+        "Kubernetes",
+        "高可用"
+      ],
+      "q": "k8s 生产环境如何实现集群高可用？",
+      "a": [
+        "控制面：apiserver 至少 3 副本（无状态可水平扩展）+ 前置 VIP（keepalived/haproxy 或云 LB），证书 SAN 里必须包含 VIP",
+        "etcd：奇数节点（3 或 5），必须跨故障域部署；和 master 混部时注意磁盘 IO 隔离——etcd 对 fsync 延迟极敏感，慢盘会让整个集群卡住",
+        "scheduler / controller-manager：多副本靠选主，同一时刻只有一个 active，其余待命，不用额外配置",
+        "数据面：worker 节点跨 2~3 个可用区，业务至少 2 副本并配反亲和（podAntiAffinity）或 topologySpreadConstraints，避免全落在同一节点或同一 AZ",
+        "入口：Ingress/LB 自己也要多副本跨 AZ，否则它就是新的单点——这是最常被漏掉的一环",
+        "存储：有状态服务用支持多 AZ 的存储，或者接受主备跨 AZ 带来的延迟",
+        "运维配套：控制面滚动升级一个个来；配 PodDisruptionBudget 防止驱逐时把副本全干掉；配好监控告警",
+        "最后一条最容易被跳过：定期演练——kill 一个 master、断掉一个 AZ，验证业务真的不中断。不做演练的高可用只存在于文档里"
+      ],
+      "follow": [
+        "etcd 为什么对磁盘 fsync 延迟这么敏感？"
+      ]
+    },
+    {
+      "id": "c09-a01",
+      "ch": 9,
+      "kind": "acceptance",
+      "level": 3,
+      "src": "written",
+      "tag": [
+        "验收",
+        "容器化改造"
+      ],
+      "q": "【验收一】公司有一套 PHP + Nginx + MySQL 的传统部署，跑在三台物理机上，环境全是手工装的。要求两周内改成容器化部署，并且老系统里的用户上传文件一个都不能丢。写出你的改造方案、镜像策略和回滚办法。",
+      "a": [
+        "先盘点，别急着写 Dockerfile：三台机器上手工改过什么（配置文件、PHP 扩展、cron）、数据在哪（MySQL 数据目录、上传目录）、有没有硬编码 IP 和第三方回调地址——这一步不做的，容器化必踩暗坑",
+        "镜像策略：每个组件一个 Dockerfile，基础镜像统一（php:8.2-fpm-alpine / nginx:alpine / mysql:8.0），配置通过挂载或环境变量注入，不打进镜像",
+        "数据持久化：MySQL 用 volume 或挂宿主机目录；上传目录用 bind mount 或 NFS 共享卷。容器本身无状态，删掉重建不影响数据",
+        "编排：compose 起四件（nginx / php-fpm / mysql / redis），内部网络互通，只暴露 80/443；用 healthcheck + depends_on condition 保证启动顺序",
+        "迁移步骤（全程可回滚）：先让容器版跑在旁路端口 8080 → 用同一份数据库做影子验证 → 切 DNS 或 LB 权重 → 观察 → 保留物理机一周",
+        "配置与密钥：MySQL 密码、证书走 .env 或 Secret 文件，不写进镜像、不进 git",
+        "回滚办法：原物理机不销毁，回滚就是改 DNS / LB 权重切回去；镜像打确切 tag 不用 latest，回滚等于改 tag",
+        "验收标准要逐条过：页面功能回归、上传文件可读可写、MySQL 数据一致性校验、重启容器后数据仍在、监控告警已接上",
+        "要主动提醒的一句：MySQL 容器化不是必须的，很多团队只容器化无状态部分，数据库继续用云 RDS——别为了「全容器化」这个名头给自己加运维负担"
+      ],
+      "follow": [
+        "为什么建议数据库不一定跟着一起容器化？"
+      ]
+    },
+    {
+      "id": "c09-a02",
+      "ch": 9,
+      "kind": "acceptance",
+      "level": 4,
+      "src": "written",
+      "tag": [
+        "验收",
+        "故障处置"
+      ],
+      "q": "【验收二】早上 8 点，K8s 集群里订单服务的 Pod 大面积 CrashLoopBackOff，同时部分节点变成 NotReady，业务 5xx 飙升。运维只有你一个人。写出从发现到恢复的完整处置流程，每一步给出判据。",
+      "a": [
+        "0~3 分钟先止血再看根因：如果 5xx 已经影响用户，先把流量切回上一个可用版本，或者降级（限流、关掉非核心功能），保住可用性",
+        "同时看全局：kubectl get nodes 看几个 NotReady、kubectl get pods -A | grep -v Running 统计异常面、看监控里节点的 CPU/内存/磁盘/网络",
+        "先判断相关性：如果「多个节点同时 NotReady + 该节点上所有 Pod 都异常」→ 方向是节点或基础设施（磁盘满、kubelet 挂、网络分区、云主机被回收）；如果「只有订单服务崩、别的正常」→ 方向是应用发布或下游依赖",
+        "查 Pod：kubectl describe pod 看 Events 和 Last State（有没有 OOMKilled），kubectl logs --previous 看崩溃前日志，重点看启动阶段报错",
+        "查节点：NotReady 的机器 ssh 上去，systemctl status kubelet、journalctl -u kubelet -n 200；常见是 DiskPressure 驱逐、内存压力、containerd 挂了、证书过期",
+        "查变更：kubectl rollout history、最近的发布记录、ConfigMap/Secret 有没有人改——绝大多数「突然大面积崩」都是变更引起的",
+        "查依赖：订单服务依赖的 DB/Redis/MQ 是否正常；连接池打满、密码过期、主从切换都会让应用启动即退出",
+        "判据要写清：节点上看 Node Conditions（MemoryPressure/DiskPressure/Ready）、Pod 上看 Events 关键字（FailedMount / OOMKilled / ImagePullBackOff）",
+        "恢复动作：祸首是发布就 rollback；是节点就 cordon + drain 并修复节点；是资源就扩容或调 request；是依赖就修依赖",
+        "收尾：确认 5xx 回落、Pod 全部 Ready、延迟恢复；当天出复盘（时间线、根因、影响面、改进项），重点回答「为什么是我们人发现的、为什么没提前告警」",
+        "给单人值班的经验：先恢复后定位；改一步记一步，别一边查一边乱改，否则状态越改越乱"
+      ],
+      "follow": [
+        "节点 NotReady 之后，上面的 Pod 会立刻被驱逐吗？"
+      ]
+    },
+    {
+      "id": "c09-a03",
+      "ch": 9,
+      "kind": "acceptance",
+      "level": 5,
+      "src": "written",
+      "tag": [
+        "验收",
+        "云上架构"
+      ],
+      "q": "【验收三】公司要把一个日活 50 万的自研系统从 IDC 迁到公有云，要求 RTO < 30 分钟、RPO < 5 分钟，同时三年总成本要比自建低 20%。给出你的架构方案、迁移路径、成本测算口径，并说明哪些地方不能省。",
+      "a": [
+        "先对齐口径再谈架构：RTO 30 分钟 = 故障后半小时内业务恢复；RPO 5 分钟 = 最多丢 5 分钟数据。这两条直接决定「要不要多可用区、数据库怎么复制」",
+        "可用性架构：至少 2 个可用区；无状态服务多副本 + SLB 跨 AZ；数据库主备跨 AZ（靠半同步复制或日志同步把 RPO 压到 5 分钟内）；静态资源走 CDN",
+        "备份兜底：RPO 5 分钟的最终保障是增量日志 + 定期全量备份；RTO 30 分钟要求有「一键拉起」的手册而且演练过——写了文档没演练不算数",
+        "迁移路径：先迁无状态前端（风险最低）→ 数据库用 DTS 或主从复制做在线迁移（停机窗口只留给最后的切换）→ 最后切流量（DNS 低 TTL + SLB 权重灰度）",
+        "灰度与回滚：双跑 N 天，IDC 环境保留可随时切回；流量按 1% → 10% → 50% → 100% 分批放",
+        "成本口径要算三年 TCO：计算 + 存储 + 带宽/出网 + 数据库 + 备份 + 监控 + 人力。出网流量和云数据库往往是隐藏大头，只按 ECS 单价算必然算错",
+        "怎么做到比自建低 20%：包年包月或预留实例覆盖基线负载、按量覆盖峰值、弹性伸缩回收空闲；存储分层（热/冷/归档）；关掉长期空跑的实例",
+        "不能省的地方：多可用区（单 AZ 能省一半钱，但可用性直接掉一个数量级）、备份与演练、监控告警、安全（WAF/密钥管理/日志审计）",
+        "风险提示：迁云最容易翻车的是「网络和 DNS」以及云上的隐性限额（安全组规则数、连接数、快照频率），迁移前要做压测和限额核对",
+        "验收口径：故障演练实测 RTO/RPO、连续三个月账单对比自建基线、压测达到目标 QPS 且 P99 达标"
+      ],
+      "follow": [
+        "为什么说「单可用区省下的钱，是用可用性换的」？"
+      ]
+    }
+  ],
+  "mc": {
+    "c09-q01": {
+      "options": [
+        "弹性伸缩、按量付费、多可用区灾备、底座免运维；大规模平台指公有云（AWS/阿里云）、私有云（OpenStack）和托管 K8s",
+        "优点是比自建机房便宜一半；大规模云计算平台就是 Apache Hadoop 和 MapReduce",
+        "优点是数据绝对安全不会丢；平台有 MySQL、Nginx、Redis 这些",
+        "优点是部署速度比物理机慢但更稳定；平台只有 VMware 一家"
+      ],
+      "answer": 0
+    },
+    "c09-q02": {
+      "options": [
+        "IaaS/PaaS/SaaS 是服务模型，公有/私有/混合/社区是部署形态，两个维度不能并列",
+        "云计算的实现方式就是 Private、IaaS、PaaS、SaaS 四选一",
+        "只有公有云和私有云两种，PaaS 和 SaaS 不属于云计算",
+        "实现方式取决于用不用虚拟机，用虚拟机就是 IaaS，不用就是 SaaS"
+      ],
+      "answer": 0
+    },
+    "c09-q03": {
+      "options": [
+        "Nova 计算、Neutron 网络、Cinder 块存储、Glance 镜像、Swift 对象存储、Keystone 认证、Horizon 控制台、Heat 编排",
+        "Nova 负责网络、Neutron 负责计算、Cinder 负责镜像",
+        "OpenStack 只有 Nova 和 Swift 两个组件，其它都是插件",
+        "Glance 负责块存储、Cinder 负责镜像、Swift 负责认证"
+      ],
+      "answer": 0
+    },
+    "c09-q04": {
+      "options": [
+        "六个：Keystone 认证、Nova 计算、Neutron 网络、Cinder/Swift 存储、Glance 镜像、Horizon 控制台",
+        "四个：compute、networking、storage、dashboard 就够了",
+        "三个：Nova、Cinder、Swift，认证和镜像属于可选组件",
+        "两个：虚拟机管理器和对象存储，其它都是上层封装"
+      ],
+      "answer": 0
+    },
+    "c09-q05": {
+      "options": [
+        "不会丢，容器处于 Exited 状态（docker ps -a 可见），docker start 能恢复；只有 docker rm 或 --rm 才会删掉可写层",
+        "会丢，容器一退出可写层就清空了，必须提前用 volume",
+        "不会丢，数据会自动写回镜像里，下次 run 能带上",
+        "会丢，但可以先用 docker commit 保存，否则文件系统被回收"
+      ],
+      "answer": 0
+    },
+    "c09-q06": {
+      "options": [
+        "--cpu-shares 是 CPU 相对权重（软限制），--cpus/--cpuset-cpus 是硬上限，--memory 是内存硬上限且超了会被 OOM kill",
+        "--cpu-shares 是 CPU 硬上限，--memory 是内存权重，两者都只在争抢时生效",
+        "只能用 --memory，Docker 不支持限制 CPU",
+        "--cpus 限制的是容器能看到的核数，--memory 限制的是磁盘配额"
+      ],
+      "answer": 0
+    },
+    "c09-q07": {
+      "options": [
+        "改 /etc/docker/daemon.json 的 data-root，先停服务、用 rsync 把 /var/lib/docker 搬到新盘再启动，只改配置不搬数据会丢镜像",
+        "直接 rm -rf /var/lib/docker 然后软链接到新目录，重启生效",
+        "改 /etc/fstab 挂载新盘到 /var/lib/docker，不需要停服务",
+        "只能重装 Docker 并指定 --data-root 参数，装好之后手动重新 pull 所有镜像"
+      ],
+      "answer": 0
+    },
+    "c09-q08": {
+      "options": [
+        "Docker Compose（单机编排）、Docker Swarm（原生集群）、Docker Machine（装机工具，已归档停止维护）",
+        "Docker Compose、Kubernetes、Mesos 三个，都是 Docker 公司的产品",
+        "Docker Machine、Docker Swarm、Docker Registry 三个",
+        "Docker Compose、Docker Swarm、Jenkins 三个，后者负责调度"
+      ],
+      "answer": 0
+    },
+    "c09-q09": {
+      "options": [
+        "Dockerfile 定义镜像 → compose.yaml 定义服务 → docker compose up -d 创建并启动；depends_on 只保证启动先后不保证就绪",
+        "先 docker compose up，再写 Dockerfile，最后 docker build 补镜像",
+        "compose 会自动分析代码生成 Dockerfile，不用自己写",
+        "compose 只能启动容器，不能用 Dockerfile 构建镜像"
+      ],
+      "answer": 0
+    },
+    "c09-q10": {
+      "options": [
+        "虚拟化是技术、云计算是交付模式；云计算不等于虚拟化，裸金属云和 Serverless 就没有传统虚拟化",
+        "云计算就是虚拟化的升级版，两者等价",
+        "虚拟化是公有云，云计算是私有云",
+        "云计算必须基于虚拟化，没有虚拟化就不是云"
+      ],
+      "answer": 0
+    },
+    "c09-q11": {
+      "options": [
+        "NameNode 管命名空间、DataNode 存数据块、SecondaryNameNode 做 checkpoint（不是热备）、ResourceManager 管 YARN 资源、NodeManager 管本机容器",
+        "NameNode 存数据、DataNode 管命名空间、SecondaryNameNode 是 NameNode 的热备",
+        "一共三个进程：NameNode、DataNode、JobTracker",
+        "ResourceManager 负责 HDFS 存储、NodeManager 负责元数据"
+      ],
+      "answer": 0
+    },
+    "c09-q12": {
+      "options": [
+        "数据合规与加密、SLA 与多可用区、成本模型（尤其出网流量）、厂商锁定与退出成本、责任共担下的运维边界",
+        "只需要考虑价格和配置够不够用",
+        "只需要考虑数据会不会丢，其它云厂商都会兜底",
+        "只需要看能不能装 Windows，因为业务系统都基于 Windows"
+      ],
+      "answer": 0
+    },
+    "c09-q13": {
+      "options": [
+        "按需弹性、资源池化多租户、全 API 化可编排、自动化运维、无状态可替换、按量可计量",
+        "和传统架构没有本质区别，只是机器放在别人机房里",
+        "最大的特点是更便宜，其次是没有单点故障",
+        "特点是必须用虚拟化，且资源不能超卖"
+      ],
+      "answer": 0
+    },
+    "c09-q14": {
+      "options": [
+        "NIST 五条：按需自助服务、广泛网络接入、资源池化、快速弹性、可计量服务",
+        "三条：虚拟化、分布式、高可用",
+        "四条：私有云、公有云、混合云、社区云",
+        "两条：弹性伸缩和按量付费"
+      ],
+      "answer": 0
+    },
+    "c09-q15": {
+      "options": [
+        "K8s 是容器编排系统，自己不跑容器（经 CRI 调 containerd）；Docker 负责构建镜像和单容器运行，镜像是 OCI 标准所以互通",
+        "K8s 是 Docker 的新版本，装上 K8s 就不用装 Docker 了",
+        "K8s 是容器运行时，Docker 是容器编排工具，两者角色正好相反",
+        "K8s 1.24 移除 dockershim 等于淘汰了 Docker，Docker 构建的镜像不能在 K8s 跑"
+      ],
+      "answer": 0
+    },
+    "c09-q16": {
+      "options": [
+        "统一 yaml 声明、自愈保副本、滚动更新与回滚、服务发现、按 request 调度、配置与密钥外置",
+        "主要是把镜像打得更小，所以部署更快",
+        "主要是自动装操作系统和内核参数，省掉装机环节",
+        "主要是提供图形界面，让不熟悉命令行的同事也能操作"
+      ],
+      "answer": 0
+    },
+    "c09-q17": {
+      "options": [
+        "分集群内（ClusterIP + kube-proxy）和集群外（NodePort / LoadBalancer）两层；Ingress 是七层路由规则，真正转发靠 Ingress Controller",
+        "K8s 的负载均衡就是 Ingress，不需要 Service",
+        "只有 LoadBalancer 一种类型，内部服务也都要走外部 LB",
+        "kube-proxy 直接转发流量，所以它是四层负载均衡器本身"
+      ],
+      "answer": 0
+    },
+    "c09-q21": {
+      "options": [
+        "虚机是硬件虚拟化、每台有独立内核；容器共享宿主机内核、只打包应用和依赖，启动秒级、隔离弱于虚机",
+        "容器也有独立内核，所以两者隔离强度完全一样",
+        "虚机比容器启动更快，因为不用装依赖",
+        "容器就是轻量级虚拟机，底层跑的是精简版 Linux 内核"
+      ],
+      "answer": 0
+    },
+    "c09-q22": {
+      "options": [
+        "COPY 只复制文件，ADD 还能解压本地 tar 和下载 URL；CMD 可被 run 参数整体替换，ENTRYPOINT 是固定入口、run 参数作为参数追加",
+        "COPY 能解压，ADD 只能复制；CMD 是固定入口，ENTRYPOINT 可被覆盖",
+        "两者完全等价，只是写法不同；CMD 和 ENTRYPOINT 也只能二选一",
+        "COPY 支持远程 URL，ADD 只支持本地文件；ENTRYPOINT 只能写 shell 形式"
+      ],
+      "answer": 0
+    },
+    "c09-q23": {
+      "options": [
+        "换 alpine/distroless、多阶段构建、合并 RUN 并把清理和安装写在同一层、用 .dockerignore、只装运行时依赖",
+        "把 Dockerfile 里的注释删掉，注释会占用镜像空间",
+        "在最后加一层 RUN rm -rf /tmp 和 apt 缓存就能清干净",
+        "镜像体积由基础镜像决定，Dockerfile 怎么写都改不了"
+      ],
+      "answer": 0
+    },
+    "c09-q24": {
+      "options": [
+        "volume 由 Docker 管理、生命周期独立于容器，适合生产持久化；bind mount 直接映射宿主机目录，适合开发和挂配置文件",
+        "volume 就是 bind mount 的别名，两者没有区别",
+        "bind mount 由 Docker 管理，volume 才是直接映射宿主机路径",
+        "volume 只能读不能写，bind mount 才能写"
+      ],
+      "answer": 0
+    },
+    "c09-q25": {
+      "options": [
+        "Pod 是最小调度单元，容器共享网络命名空间、IPC 和 volume；多容器用于主容器 + sidecar/init 这类紧耦合辅助容器",
+        "Pod 里每个容器都有独立 IP 和独立网络栈，所以才能放多个",
+        "一个 Pod 里的容器会被调度到不同节点，靠 Service 互通",
+        "Pod 就是一组无关容器的合集，放几个都一样"
+      ],
+      "answer": 0
+    },
+    "c09-q26": {
+      "options": [
+        "apiserver 是唯一入口并独占 etcd 读写；etcd 存全部状态；scheduler 决定 Pod 落在哪个节点；controller-manager 把实际状态拉向期望状态",
+        "etcd 负责调度、scheduler 负责存储、apiserver 只做认证",
+        "master 只有 apiserver 和 etcd 两个组件，调度和控制器都在节点上",
+        "controller-manager 直接创建容器，不经过 apiserver"
+      ],
+      "answer": 0
+    },
+    "c09-q27": {
+      "options": [
+        "kubelet 管 Pod 生命周期并调 CRI 起容器；kube-proxy 维护 iptables/IPVS 规则实现 Service 转发",
+        "kubelet 负责网络转发，kube-proxy 负责起容器",
+        "kubelet 只在 master 上运行，kube-proxy 只在 worker 上运行",
+        "kube-proxy 负责拉镜像，kubelet 负责分配 IP"
+      ],
+      "answer": 0
+    },
+    "c09-q28": {
+      "options": [
+        "Deployment 无状态、StatefulSet 有状态带稳定标识和独立 PVC、DaemonSet 每节点一个、Job 一次性、CronJob 定时",
+        "五个都一样，只是名字不同，按喜好选",
+        "StatefulSet 用于无状态应用，Deployment 用于数据库",
+        "DaemonSet 用于有状态数据库，StatefulSet 用于日志采集"
+      ],
+      "answer": 0
+    },
+    "c09-q29": {
+      "options": [
+        "ClusterIP（集群内）、NodePort（节点端口）、LoadBalancer（云厂商 LB）、ExternalName（映射外部域名 CNAME）",
+        "TCP、UDP、HTTP、HTTPS 四种",
+        "ClusterIP、Ingress、Pod、Node 四种",
+        "Ingress、Gateway、ServiceMesh、NodePort 四种"
+      ],
+      "answer": 0
+    },
+    "c09-q32": {
+      "options": [
+        "request 决定调度和 CPU 权重，limit 是硬上限；内存超 limit 会被 OOMKill（137），CPU 超 limit 只是被限流不会杀",
+        "request 是硬上限，limit 是调度依据",
+        "内存和 CPU 超了 limit 都会被 OOMKill",
+        "OOMKill 由 livenessProbe 失败触发"
+      ],
+      "answer": 0
+    },
+    "c09-q33": {
+      "options": [
+        "Taint 打在 Node 上排斥 Pod，Toleration 写在 Pod 上容忍污点；NoSchedule 拒绝新 Pod，NoExecute 连已运行的也驱逐",
+        "Taint 写在 Pod 上，Toleration 打在 Node 上",
+        "Toleration 表示 Pod 必须调度到该节点，是强制约束",
+        "Taint 只有一种 effect，和 nodeSelector 作用完全相同"
+      ],
+      "answer": 0
+    },
+    "c09-q34": {
+      "options": [
+        "maxSurge 是允许多起多少 Pod，maxUnavailable 是允许多少 Pod 不可用；两者不能同时为 0，零中断要 maxUnavailable=0 且配好 readinessProbe",
+        "maxSurge 是最多能停多少 Pod，maxUnavailable 是最多能多起多少",
+        "两者可以同时设为 0，这样更新最快",
+        "百分比写法不支持，只能写绝对数量"
+      ],
+      "answer": 0
+    },
+    "c09-q35": {
+      "options": [
+        "PV 是实际存储资源，PVC 是 Pod 的存储申请，两者一对一绑定；StorageClass 负责按 PVC 动态创建 PV",
+        "PVC 是实际存储，PV 是申请单，方向正好相反",
+        "StorageClass 是给 Pod 用的存储卷类型，和 PV/PVC 无关",
+        "一个 PV 可以同时被多个 PVC 绑定并使用"
+      ],
+      "answer": 0
+    },
+    "c09-q37": {
+      "options": [
+        "CNI 是容器网络接口规范，负责给 Pod 分配 IP 和打通 Pod 间网络；常见 Calico、Flannel、Cilium，其中 Flannel 不支持 NetworkPolicy",
+        "CNI 是 K8s 的负载均衡插件，负责把流量分到各 Pod",
+        "CNI 是镜像仓库的接口标准，Calico 和 Flannel 都是镜像仓库",
+        "CNI 负责给 Pod 挂存储卷，常见插件是 Ceph 和 NFS"
+      ],
+      "answer": 0
+    },
+    "c09-q38": {
+      "options": [
+        "按 label 选中 Pod 做 L3/L4 的进出控制；默认全通，被选中后该方向默认拒绝；需要 CNI 支持（Flannel 不行）",
+        "控制 Pod 的 CPU 和内存上限，防止互相抢占",
+        "控制哪些用户能用 kubectl 访问集群，相当于 RBAC",
+        "Flannel 自带 NetworkPolicy 能力，不依赖其它 CNI"
+      ],
+      "answer": 0
+    },
+    "c09-q39": {
+      "options": [
+        "etcd 存集群全部状态，用 etcdctl snapshot save（v3 API，需带证书）定期快照；恢复要先停 apiserver 和 etcd，restore 到新 data-dir 后改配置再启动",
+        "etcd 只存日志，丢了不影响业务，不用备份",
+        "备份就是备份 /var/lib/kubelet 目录，etcd 数据全在里面",
+        "直接 kubectl get all -o yaml 导出就是 etcd 的完整备份，能直接恢复"
+      ],
+      "answer": 0
+    },
+    "c09-q40": {
+      "options": [
+        "Nova 管虚拟机计算、Neutron 管网络、Cinder 管块存储、Glance 管镜像；Cinder 是块存储、Swift 才是对象存储",
+        "Nova 管网络、Neutron 管计算、Cinder 管镜像、Glance 管存储",
+        "Nova 管镜像、Glance 管计算、Cinder 管块存储、Neutron 管对象存储",
+        "四个组件里只有 Nova 是核心，其余都是可选插件"
+      ],
+      "answer": 0
+    },
+    "c09-q41": {
+      "options": [
+        "Compose 是单机多容器编排，没有调度和自愈；K8s 是多机集群编排，有调度、自愈、滚动更新和跨节点能力",
+        "两者能力完全一样，只是 K8s 命令更长",
+        "Compose 用于生产多节点，K8s 只能用于本地开发",
+        "K8s 依赖 Compose 才能启动容器，二者是包含关系"
+      ],
+      "answer": 0
+    },
+    "c09-q42": {
+      "options": [
+        "Helm 是 K8s 包管理器；chart 是打包好的模板（templates + values.yaml + Chart.yaml），release 是 chart 在集群里的一次部署实例",
+        "chart 是集群里的部署实例，release 是模板包，叫法正好相反",
+        "Helm 3 仍需要一个叫 Tiller 的高权限服务端组件才能工作",
+        "Helm 只能安装官方仓库的应用，不能安装自己写的 yaml"
+      ],
+      "answer": 0
+    },
+    "c09-q43": {
+      "options": [
+        "ConfigMap 存明文配置，Secret 存密钥但只是 base64 编码不是加密；volume 挂载会更新、环境变量注入不会，且都要按命名空间隔离",
+        "Secret 的内容是加密的，没有密钥无法还原，所以可以放心提交到 git",
+        "ConfigMap 可以跨命名空间直接引用，Secret 才不行",
+        "两者都只能以环境变量方式注入，不能挂成文件"
+      ],
+      "answer": 0
+    },
+    "c09-q44": {
+      "options": [
+        "同一个 Pod 里跟主容器并列跑辅助容器，共享网络和存储；典型是日志采集、Envoy 代理；init 容器则是先跑完就退出",
+        "sidecar 是独立的一个 Pod，通过 Service 访问主容器",
+        "sidecar 只能在 Pod 启动前运行，主容器起来后就退出",
+        "sidecar 和主容器共享的是磁盘但各自有独立 IP"
+      ],
+      "answer": 0
+    }
+  }
+}

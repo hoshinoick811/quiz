@@ -270,6 +270,24 @@ sandbox.window.matchMedia = () => ({ matches: false });
     Q.renderQuestion();
     ok('场景题保持口述（不出选项）', Q.state.quiz.useMC === false);
 
+    // 选项打乱的落位分布：正确项老固定出现在 A，就等于把答案送出去了
+    const SQ = sandbox.window.Q;
+    const idx = readData('index.json');
+    const pos = [0, 0, 0, 0];
+    let mcN = 0;
+    for (const c of idx.chapters) {
+      const ch = readData(c.file);
+      for (const [id, v] of Object.entries(ch.mc || {})) {
+        const order = SQ.shuffleSeeded(v.options.map((x, i) => i), SQ.hashStr(id));
+        pos[order.indexOf(v.answer)]++;
+        mcN++;
+      }
+    }
+    const want = mcN / 4;
+    const chi = pos.reduce((s, n) => s + (n - want) ** 2 / want, 0);
+    ok('正确选项在 A/B/C/D 的分布均匀（' + mcN + ' 题）', chi < 7.82 && Math.min(...pos) > want * 0.6,
+       'A/B/C/D=' + pos.join('/') + ' chi2=' + chi.toFixed(2) + '（3 自由度 0.05 临界值 7.82）');
+
     ok('默认深色', document.documentElement.getAttribute('data-theme') === 'dark',
        'theme=' + document.documentElement.getAttribute('data-theme'));
     Q.state.settings.theme = 'light';
