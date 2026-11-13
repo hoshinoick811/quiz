@@ -45,6 +45,11 @@
       "id": 9,
       "title": "Linux 云计算篇",
       "file": "ch09.json"
+    },
+    {
+      "id": 10,
+      "title": "Python 编程篇",
+      "file": "ch10.json"
     }
   ]
 }
