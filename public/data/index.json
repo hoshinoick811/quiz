@@ -50,6 +50,16 @@
       "id": 10,
       "title": "Python 编程篇",
       "file": "ch10.json"
+    },
+    {
+      "id": 11,
+      "title": "AI 大模型部署 & MLOps 篇",
+      "file": "ch11.json"
+    },
+    {
+      "id": 12,
+      "title": "实施交付 & IT 技术支持篇",
+      "file": "ch12.json"
     }
   ]
 }

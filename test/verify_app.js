@@ -334,7 +334,9 @@ sandbox.window.matchMedia = () => ({ matches: false });
   ok('抽屉默认全部收起', !/<details[^>]*\sopen[=\s>]/.test(bHtml));
   ok('抽屉标题带进度信息', bHtml.includes('待攻克'));
   const lastTitle = Q2.state.chapters[Q2.state.chapters.length - 1].title;
-  ok('题库页出现最新一章「' + lastTitle + '」', bHtml.includes(lastTitle),
+  // 抽屉标题走 escapeHtml，章名里带 & 时渲染出来是 &amp;，所以要比对转义后的形式
+  const escHtml = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  ok('题库页出现最新一章「' + lastTitle + '」', bHtml.includes(escHtml(lastTitle)),
      Q2.state.chapters.map((c) => c.title).join(' / '));
 
   // 模拟章节变多（再加 2 章），验证「只露 3 行 + 全部章节」
