@@ -38,7 +38,7 @@ for (const it of bank.items) {
   if (it.tag && !Array.isArray(it.tag)) bad.push(it.id + ' tag 非数组');
 }
 /* 每章题量：加章/加题时改这张表，比只盯一个总数更容易看出少的是哪一章 */
-const CHAPTER_EXPECT = { 1: 33, 2: 25, 3: 18, 4: 18, 5: 37, 6: 16, 7: 24, 8: 29, 9: 48, 10: 13, 11: 15, 12: 7 };
+const CHAPTER_EXPECT = { 1: 33, 2: 25, 3: 18, 4: 18, 5: 37, 6: 16, 7: 24, 8: 29, 9: 48, 10: 13, 11: 15, 12: 7, 13: 50 };
 const perCh = {};
 bank.items.forEach(i => perCh[i.ch] = (perCh[i.ch] || 0) + 1);
 const chBad = Object.entries(CHAPTER_EXPECT)
